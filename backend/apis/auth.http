@@ -1,0 +1,6 @@
+### Get all data stored in auth table
+
+GET http://localhost:3000/auth
+
+
+GET http://localhost:3000/auth/login
