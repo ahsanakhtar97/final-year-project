@@ -1,19 +1,52 @@
-import {useState} from 'react'
-export default function Login(){
-    const [email,setEmail]=useState("");
-    const [password,setPassword]=useState("");
-    async function handleLogin(e:React.FormEvent<HTMLFormElement>){
-        e.preventDefault();
-        console.log('Form submitted');
-        console.log({email,password});
-    }
-    return (
-        <form onSubmit={handleLogin}>
-            <input type='email' placeholder='Enter your email' value={email} onChange={(e)=>setEmail(e.target.value)}></input>
-            <input type='password' placeholder='Enter your password' value={password} onChange={(e)=>setPassword(e.target.value)}></input>
-            <button type='submit'>Submit</button>
+"use client";
 
-        </form>
-    )
+import React from "react";
+// We don't need 'next/image' for this component anymore
+import styles from "./styles.module.css";
 
+export default function LoginPage() {
+  return (
+    <div className={styles.pageContainer}>
+      <div className={styles.loginCard}>
+        {/* Left Info Panel */}
+        {/* The logo is now the background of this div, set in styles.module.css */}
+        <div className={styles.infoPanel}></div>
+
+        {/* Right Form Panel */}
+        <div className={styles.formPanel}>
+          <h2 className={styles.loginTitle}>Log In</h2>
+
+          <form className={styles.loginForm}>
+            <div className={styles.inputGroup}>
+              <label htmlFor="username">Username/Email</label>
+              <input
+                type="text"
+                id="username"
+                placeholder="Enter your username/email"
+                required
+              />
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label htmlFor="password">Password</label>
+              <input
+                type="password"
+                id="password"
+                placeholder="Enter your password"
+                required
+              />
+            </div>
+
+            <a href="#" className={styles.forgotLink}>
+              Forgot Password?
+            </a>
+
+            <button className={styles.loginBtn} type="submit">
+              Login
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
 }

@@ -1,0 +1,121 @@
+/* Overall Page Background */
+.pageContainer {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #d9ead3;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+/* Main Login Card */
+.loginCard {
+  width: 100%;
+  max-width: 900px;
+  min-height: 550px;
+  display: flex;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* Left Panel (Logo Background) */
+.infoPanel {
+  flex: 1;
+  /* This is the light grey background from your logo image */
+  background-color: #f0f0f0; 
+  /* Sets the logo as the background */
+  background-image: url('/grow-flow-logo.png'); 
+  /* Ensures the logo fits fully inside the panel */
+  background-size: contain; 
+  /* Prevents the logo from tiling */
+  background-repeat: no-repeat; 
+  /* Centers the logo in the panel */
+  background-position: center; 
+  padding: 40px;
+}
+
+/* We don't need these anymore */
+/* .logo { ... } */
+/* .quote { ... } */
+
+/* Right Panel (Form) */
+.formPanel {
+  flex: 1;
+  background: #4F7A72;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 50px;
+  color: #ffffff;
+}
+
+.loginTitle {
+  font-size: 32px;
+  font-weight: 600;
+  margin-bottom: 30px;
+}
+
+.loginForm {
+  width: 100%;
+}
+
+/* Inputs */
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.inputGroup label {
+  font-size: 14px;
+  margin-bottom: 6px;
+  color: #e0e7e1;
+}
+
+.inputGroup input {
+  padding: 14px;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+  font-size: 15px;
+  background: #f4f4f4;
+  color: #333;
+}
+
+/* Forgot Password Link */
+.forgotLink {
+  display: block;
+  text-align: right;
+  font-size: 13px;
+  color: #e0e7e1;
+  text-decoration: none;
+  margin-top: -10px;
+  margin-bottom: 25px;
+  transition: 0.3s ease;
+}
+
+.forgotLink:hover {
+  color: #ffffff;
+}
+
+/* Button */
+.loginBtn {
+  width: 100%;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #f4f4f4;
+  color: #4F7A72;
+  transition: 0.3s ease;
+  letter-spacing: 0.5px;
+}
+
+.loginBtn:hover {
+  background: #e0e0e0;
+}
