@@ -10,7 +10,7 @@ export class UsersService {
   constructor(@InjectRepository(User) private readonly userRepository: Repository<User>) { }
   async create(createUserDto: CreateUserDto) {
   try {
-    await this.userRepository.insert(createUserDto);
+    await this.userRepository.save(createUserDto);
     return { message: 'New user created successfully' };
   } catch (error) {
     if (error.code === '23505') {

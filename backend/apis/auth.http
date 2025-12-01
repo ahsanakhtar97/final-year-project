@@ -11,3 +11,13 @@ Content-Type: application/json
 ### Get a user token
 GET http://localhost:3000/auth/me
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsIm5hbWUiOiJBbGkgS2hhbiIsImVtYWlsIjoiYWxpQGV4YW1wbGUuY29tIiwiaWF0IjoxNzYzMjQ5NzUwLCJleHAiOjE3NjMzMzYxNTB9.b1bsMFhGism-r_FqdJYNy9WflN1ImPFocck1g2JUGFs
+
+### Register a user
+POST http://localhost:3000/auth/register
+Content-Type: application/json
+
+{
+  "name":"Asad Irfan",
+  "email":"asad@example.com",
+  "password":"password123"
+}
