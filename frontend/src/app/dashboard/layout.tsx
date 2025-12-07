@@ -1,13 +1,22 @@
+// components/Layout.tsx
+"use client";
+
 import Sidebar from "@/components/sidebar";
-
-export default function DashboardLayout({ children }) {
+export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex">
+    <div style={styles.container}>
       <Sidebar />
-
-      <div className="flex-1 ml-64 p-6">
-        {children}
-      </div>
+      <main style={styles.main}>{children}</main>
     </div>
   );
 }
+
+const styles: Record<string, React.CSSProperties> = {
+  container: {
+    display: "flex",
+  },
+  main: {
+    flex: 1,
+    padding: "20px",
+  },
+};

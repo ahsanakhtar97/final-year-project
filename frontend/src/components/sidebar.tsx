@@ -1,6 +1,6 @@
 "use client";
-
-import { useState } from "react";
+import { useRouter } from 'next/navigation';
+import { useEffect, useState} from "react";
 import {
   LayoutDashboard,
   User,
@@ -9,82 +9,101 @@ import {
   Mail,
   Settings,
   MoreHorizontal,
-  LogOut
+  LogOut,
+  CheckSquare
 } from "lucide-react";
 import Link from "next/link";
-
-const menuItems = [
-  { name: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-  { name: "Profile", icon: User, href: "/dashboard/profile" },
-  { name: "Comments", icon: MessageSquare, href: "/dashboard/comments" },
-  { name: "Analytics", icon: BarChart2, href: "/dashboard/analytics" },
-  { name: "Messages", icon: Mail, href: "/dashboard/messages" },
-  { name: "Integration", icon: Mail, href: "/dashboard/integration" },
-];
+import { jwtDecode } from 'jwt-decode';
+import { style } from 'framer-motion/client';
 
 export default function Sidebar() {
+    function getToken():string|null{
+        const token=localStorage.getItem('accessToken');
+        if(token)
+        return token;
+    return null;
+    }
+    function getpayload(token:string|null){
+        if(token){
+        const data=jwtDecode(token);
+        return data;
+        }
+    }
+    const router=useRouter();
   const [open, setOpen] = useState(true);
-
+  const [user,setUser]=useState({name:"",email:""})
+  function handleLogout(){
+          localStorage.removeItem('accessToken');
+          router.push('/login');
+      }
+      useEffect(()=>{
+        const t=getToken();
+        const pl=getpayload(t);
+        console.log(pl);
+        setUser(prev=>({
+            ...prev,...pl
+        }));
+      },[])
   return (
+
     <>
-      {/* Mobile Toggle Button */}
-      <button
-        className="md:hidden p-3"
-        onClick={() => setOpen(!open)}
-      >
-        ☰
-      </button>
-
-      <div
-        className={`bg-white shadow-md h-screen p-6 flex flex-col w-64 
-        md:translate-x-0 transition-all duration-300 fixed md:static 
-        ${open ? "translate-x-0" : "-translate-x-64"}
-        `}
-      >
-        <h1 className="text-xl font-bold mb-10">Virtual Dashboard</h1>
-
-        {/* Main Menu */}
-        <nav className="space-y-3 flex-1">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className="flex items-center gap-3 p-3 rounded-md hover:bg-blue-100"
-              >
-                <Icon className="w-5 h-5" />
-                <span>{item.name}</span>
-              </Link>
-            );
-          })}
-
-          {/* Section divider */}
-          <div className="border-t my-4"></div>
-
-          <Link
-            href="/dashboard/settings"
-            className="flex items-center gap-3 p-3 rounded-md hover:bg-blue-100"
-          >
-            <Settings className="w-5 h-5" />
-            <span>Settings</span>
-          </Link>
-
-          <Link
-            href="#"
-            className="flex items-center gap-3 p-3 rounded-md hover:bg-blue-100"
-          >
-            <MoreHorizontal className="w-5 h-5" />
-            <span>More</span>
-          </Link>
-        </nav>
-
-        {/* Logout */}
-        <button className="mt-auto flex items-center gap-3 p-3 rounded-md border hover:bg-gray-100">
-          <LogOut className="w-5 h-5" /> Logout
+      <aside style={styles.sidebar}>
+        <h2 style={styles.heading}> Welcome, {user.name}</h2>
+        <ul style={styles.menu}>
+            <li style={styles.menuItem}>
+                <LayoutDashboard size={20}/>
+                <span>Dashboard</span>
+            </li>
+            <li style={styles.menuItem}>
+                <CheckSquare size={20}/>
+                <span>To Do List</span>
+            </li>
+            <li style={styles.menuItem}>
+                <User size={20}/>
+                <span>Profile</span>
+            </li>
+        </ul>
+        <div style={styles.menuItem}>
+            <LogOut size={20}/>
+        <button style={styles.logoutBtnStyle} onClick={handleLogout}>
+            Logout
         </button>
       </div>
+      </aside>
+      
     </>
   );
+}
+const styles:Record<string,React.CSSProperties>={
+    sidebar:{
+        width:'220px',
+        minHeight:'100vh',
+        backgroundColor:'#f5f5f5',
+        padding:'20px',
+        boxSizing:'border-box'
+    },
+    heading:{
+        fontSize:'20px',
+        fontWeight:'bold',
+        marginBottom:'30px'
+    },
+    menu:{
+        listStyle:'none',
+        padding:0,
+        margin:0
+    },
+    menuItem:{
+        display:'flex',
+        alignItems:'center',
+        gap:'10px',
+        padding:'10px 0',
+        cursor:'pointer'
+    },
+    logoutBtnStyle:{
+        fontSize:'16px',
+        border:'none',
+        outline:'none',
+        backgroundColor:'#f5f5f5'
+    }
+
 }

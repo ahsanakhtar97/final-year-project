@@ -1,14 +1,11 @@
 "use client"
 import { jwtDecode } from 'jwt-decode';
 import { useRouter } from 'next/navigation';
+
 import React, { useEffect } from 'react'
 
 const dashboardPage = () => {
-    const router=useRouter();
-    function handleLogout(){
-        localStorage.removeItem('accessToken');
-        router.push('/login');
-    }
+    const router=useRouter()
 // Reroute to login if token is expired
 useEffect(()=>{
     const token=localStorage.getItem('accessToken');
@@ -23,9 +20,9 @@ useEffect(()=>{
     }
 },[router]);
     return (
-        <div>
-    <div>Welcome to dashboard</div>
-    <button onClick={handleLogout}>Logout</button>
+       <div>
+      <h1 className="text-2xl font-bold">Dashboard</h1>
+      <p className="text-gray-600">Welcome to your dashboard.</p>
     </div>
   )
 }
