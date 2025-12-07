@@ -1,8 +1,9 @@
-import { ConflictException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
+import { Task } from 'src/tasks/entities/task.entity';
 
 
 @Injectable()
@@ -37,4 +38,12 @@ export class UsersService {
     return `This action removes a #${id} user`;
   }
     */
+
+  // Get all tasks by a user
+  async getTasks(id:number):Promise<Task[]>{
+    const user=await this.findOneById(id);
+    if(!user) throw new NotFoundException('User not found');
+    const tasks=user.tasks;
+    return tasks;
+  }
 }

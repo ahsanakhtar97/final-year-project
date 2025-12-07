@@ -1,0 +1,25 @@
+### Get all tasks
+GET http://localhost:3000/tasks
+
+
+### Get task by ID
+GET http://localhost:3000/tasks/1
+
+
+### Create a new task
+POST http://localhost:3000/tasks
+Content-Type: application/json
+
+{
+    "userId":"1",
+    "title": "Bug fixes",
+    "description":"Make sure the user apis have all the exceptions caught",
+    "taskStatus":"to_do"
+}
+
+### Delete a task
+DELETE http://localhost:3000/tasks/13
+
+
+### Get task by status
+GET http://localhost:3000/tasks/status/completed

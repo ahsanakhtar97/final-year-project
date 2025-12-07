@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, NotFoundException } 
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { User } from './entities/user.entity';
+import { Task } from 'src/tasks/entities/task.entity';
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -21,5 +22,9 @@ export class UsersController {
     const user=await this.usersService.findOneById(+id);
     if(!user) throw new NotFoundException(`User with id ${id} not found`)
       return user;
+  }
+  @Get(':id/tasks')
+  async getTasks(@Param('id') id:number):Promise<Task[]>{
+    return await this.usersService.getTasks(+id);
   }
 }

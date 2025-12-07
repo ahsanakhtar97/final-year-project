@@ -10,3 +10,6 @@ Content-Type: application/json
     "email":"asadirfan8t@gmail.com",
     "passwordHash":"asad123"
 }
+
+### Get users task by Id
+GET http://localhost:3000/users/1/tasks
