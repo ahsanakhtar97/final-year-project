@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
 import { Task } from 'src/tasks/entities/task.entity';
+import { TaskStatus } from 'src/tasks/enums/task-status.enum';
 
 
 @Injectable()
@@ -26,18 +27,12 @@ export class UsersService {
   }
 
   async findOneById(id: number): Promise<User | null> {
-    return await this.userRepository.findOne({ where: { userId: id } });
+    return await this.userRepository.findOne({ where: { userId: id },relations:['tasks'] });
   }
   // Find A user by his email
   async findOneByEmail(email:string):Promise<User|null>{
     return await this.userRepository.findOne({where:{email}});
   }
-
-  /*
-  remove(id: number) {
-    return `This action removes a #${id} user`;
-  }
-    */
 
   // Get all tasks by a user
   async getTasks(id:number):Promise<Task[]>{
@@ -45,5 +40,13 @@ export class UsersService {
     if(!user) throw new NotFoundException('User not found');
     const tasks=user.tasks;
     return tasks;
+  }
+
+  async getPercentStatus(id:number,status:TaskStatus):Promise<any>{
+    const tasks=await this.getTasks(id);
+    if(tasks.length===0) return 0;
+    const statusTasks=tasks.filter(task=>task.taskStatus==status);
+    const percentage=statusTasks.length/tasks.length;
+    return {userId:id,status:status,percentage:percentage};
   }
 }

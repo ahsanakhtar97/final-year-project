@@ -13,3 +13,7 @@ Content-Type: application/json
 
 ### Get users task by Id
 GET http://localhost:3000/users/1/tasks
+
+
+### Get users percentage by status
+GET http://localhost:3000/users/5/tasks/status/completed/percentage

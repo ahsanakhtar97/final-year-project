@@ -32,4 +32,5 @@ export class TasksService {
     const tasks=await this.tasksRepository.find({where:{taskStatus:status}});
     return tasks;
   }
+
 }
