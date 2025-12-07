@@ -4,17 +4,11 @@ import { useEffect, useState} from "react";
 import {
   LayoutDashboard,
   User,
-  MessageSquare,
-  BarChart2,
-  Mail,
-  Settings,
-  MoreHorizontal,
   LogOut,
   CheckSquare
 } from "lucide-react";
 import Link from "next/link";
 import { jwtDecode } from 'jwt-decode';
-import { style } from 'framer-motion/client';
 
 export default function Sidebar() {
     function getToken():string|null{
@@ -51,16 +45,22 @@ export default function Sidebar() {
         <h2 style={styles.heading}> Welcome, {user.name}</h2>
         <ul style={styles.menu}>
             <li style={styles.menuItem}>
+                <Link href='/dashboard' style={styles.linkStyle}>
                 <LayoutDashboard size={20}/>
                 <span>Dashboard</span>
+                </Link>
             </li>
             <li style={styles.menuItem}>
+                <Link href='/dashboard/to-do' style={styles.linkStyle}>
                 <CheckSquare size={20}/>
                 <span>To Do List</span>
+                </Link>
             </li>
             <li style={styles.menuItem}>
+                <Link href='/dashboard/profile' style={styles.linkStyle}>
                 <User size={20}/>
                 <span>Profile</span>
+                </Link>
             </li>
         </ul>
         <div style={styles.menuItem}>
@@ -103,7 +103,14 @@ const styles:Record<string,React.CSSProperties>={
         fontSize:'16px',
         border:'none',
         outline:'none',
-        backgroundColor:'#f5f5f5'
+        backgroundColor:'#f5f5f5',
+        cursor:'pointer'
+    },
+    linkStyle:{
+        textDecoration:'none',
+        display:'flex',
+        color:'black',
+        gap:'10px'
     }
 
 }

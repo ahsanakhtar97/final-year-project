@@ -14,6 +14,7 @@ export class User {
 
     @Column({name:'password_hash',unique:true})
     passwordHash:string;
+
     @OneToMany(()=> Task, (task)=>task.user)
     tasks:Task[]
 }

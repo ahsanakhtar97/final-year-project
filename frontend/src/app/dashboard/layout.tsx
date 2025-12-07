@@ -1,7 +1,7 @@
 // components/Layout.tsx
 "use client";
 
-import Sidebar from "@/components/sidebar";
+import Sidebar from "@/app/components/sidebar";
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div style={styles.container}>

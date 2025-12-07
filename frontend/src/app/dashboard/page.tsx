@@ -3,6 +3,7 @@ import { jwtDecode } from 'jwt-decode';
 import { useRouter } from 'next/navigation';
 
 import React, { useEffect } from 'react'
+import PieChart from '../components/charts/PieChart';
 
 const dashboardPage = () => {
     const router=useRouter()
@@ -18,13 +19,29 @@ useEffect(()=>{
             router.push('/login');
         }
     }
+    else router.push('login');
 },[router]);
     return (
        <div>
-      <h1 className="text-2xl font-bold">Dashboard</h1>
-      <p className="text-gray-600">Welcome to your dashboard.</p>
+      <h1 className="t">Dashboard</h1>
+      <div style={styles.pieChartContainer}>
+        <span style={styles.pieChartTextStyle}>To Do List Progress</span>
+      <PieChart labels={["To do","In Progress","Completed"]} values={[0.3,0.2,0.5]} />
+      </div>
     </div>
   )
+}
+const styles:Record<string,React.CSSProperties>={
+    pieChartContainer:{
+        width:'400px',
+        height:'400px'
+    },
+    pieChartTextStyle:{
+        fontWeight:'bold',
+        
+
+    }
+
 }
 
 export default dashboardPage;
