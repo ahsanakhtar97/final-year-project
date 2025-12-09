@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface Task {
   id: string;
@@ -9,6 +9,8 @@ interface Task {
 }
 
 export default function ToDoBoard() {
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
   const [columns, setColumns] = useState<{
     todo: Task[];
     inProgress: Task[];
@@ -29,13 +31,20 @@ export default function ToDoBoard() {
   const [draggedItem, setDraggedItem] = useState<Task | null>(null);
   const [sourceColumn, setSourceColumn] = useState<string>("");
 
-  // Modal State
   const [showModal, setShowModal] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
 
-  // Expanded Task
   const [expandedTask, setExpandedTask] = useState<Task | null>(null);
+
+  const isDark = theme === "dark";
+
+  // ✅ Apply theme to full page
+  useEffect(() => {
+    document.body.style.background = isDark ? "#0f1f17" : "#dff8e3";
+    document.body.style.color = isDark ? "#e5f5ec" : "#123716";
+    document.body.style.transition = "background 0.3s ease, color 0.3s ease";
+  }, [isDark]);
 
   const handleDragStart = (task: Task, column: string) => {
     setDraggedItem(task);
@@ -89,19 +98,45 @@ export default function ToDoBoard() {
   };
 
   const boardStyle: React.CSSProperties = {
-    background: "linear-gradient(180deg, #dff8e3, #bfe7c5)",
     minHeight: "100vh",
     padding: "30px",
     fontFamily: "'Lora', serif",
+    background: isDark
+      ? "linear-gradient(180deg, #0f1f17, #1b2f24)"
+      : "linear-gradient(180deg, #dff8e3, #bfe7c5)",
+    color: isDark ? "#e5f5ec" : "#123716",
+    transition: "all 0.3s ease",
   };
+
+  const columnBg = isDark ? "#1f2f27" : "#ffffff";
+  const cardBg = isDark ? "#243b30" : "#ffffff";
+  const borderColor = isDark ? "#355a4a" : "#e5e5e5";
 
   return (
     <main style={boardStyle}>
-      <h1 style={{ textAlign: "center", fontSize: "34px", color: "#123716" }}>
-        To-Do List
-      </h1>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h1 style={{ fontSize: "34px" }}>To-Do List</h1>
 
-      <div style={{ textAlign: "center", marginBottom: "20px" }}>
+        {/* Theme Switch */}
+        <button
+          onClick={() => setTheme(isDark ? "light" : "dark")}
+          style={{
+            background: isDark ? "#e5f5ec" : "#163b25",
+            color: isDark ? "#123716" : "#fff",
+            padding: "10px 16px",
+            borderRadius: "12px",
+            border: "none",
+            cursor: "pointer",
+            fontWeight: 600,
+          }}
+        >
+          {isDark ? "☀ Light" : "🌙 Dark"}
+        </button>
+      </div>
+
+      {/* Add Task */}
+      <div style={{ textAlign: "center", margin: "20px 0" }}>
         <button
           onClick={() => setShowModal(true)}
           style={{
@@ -119,20 +154,18 @@ export default function ToDoBoard() {
 
       {/* Columns */}
       <div style={{ display: "flex", gap: "24px", justifyContent: "center" }}>
-        {(
-          Object.keys(columns) as (keyof typeof columns)[]
-        ).map((columnKey) => (
+        {(Object.keys(columns) as (keyof typeof columns)[]).map((columnKey) => (
           <div
             key={columnKey}
             onDrop={() => handleDrop(columnKey)}
             onDragOver={allowDrop}
             style={{
-              background: "#fff",
+              background: columnBg,
               borderRadius: "20px",
               padding: "16px",
               width: "340px",
               minHeight: "420px",
-              boxShadow: "0 10px 20px rgba(0,0,0,0.12)",
+              boxShadow: "0 10px 20px rgba(0,0,0,0.15)",
             }}
           >
             <h2 style={{ textAlign: "center", textTransform: "capitalize" }}>
@@ -150,13 +183,13 @@ export default function ToDoBoard() {
                 onDragStart={() => handleDragStart(task, columnKey)}
                 onClick={() => setExpandedTask(task)}
                 style={{
-                  background: "#fff",
+                  background: cardBg,
                   padding: "14px",
                   marginBottom: "12px",
                   borderRadius: "14px",
                   cursor: "pointer",
                   boxShadow: "0 6px 12px rgba(0,0,0,0.1)",
-                  border: "1px solid #e5e5e5",
+                  border: `1px solid ${borderColor}`,
                   position: "relative",
                 }}
               >
@@ -173,7 +206,7 @@ export default function ToDoBoard() {
                     right: "10px",
                     background: "transparent",
                     border: "none",
-                    color: "red",
+                    color: isDark ? "#ff8a8a" : "red",
                     cursor: "pointer",
                     fontSize: "14px",
                   }}
@@ -192,7 +225,7 @@ export default function ToDoBoard() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.5)",
+            background: "rgba(0,0,0,0.6)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -200,7 +233,7 @@ export default function ToDoBoard() {
         >
           <div
             style={{
-              background: "#fff",
+              background: cardBg,
               padding: "24px",
               borderRadius: "20px",
               width: "340px",
@@ -217,7 +250,9 @@ export default function ToDoBoard() {
                 padding: "10px",
                 marginBottom: "12px",
                 borderRadius: "8px",
-                border: "1px solid #ccc",
+                border: `1px solid ${borderColor}`,
+                background: "transparent",
+                color: "inherit",
               }}
             />
 
@@ -230,15 +265,14 @@ export default function ToDoBoard() {
                 padding: "10px",
                 height: "80px",
                 borderRadius: "8px",
-                border: "1px solid #ccc",
+                border: `1px solid ${borderColor}`,
+                background: "transparent",
+                color: "inherit",
               }}
             />
 
             <div style={{ marginTop: "16px", textAlign: "right" }}>
-              <button
-                onClick={() => setShowModal(false)}
-                style={{ marginRight: "10px" }}
-              >
+              <button onClick={() => setShowModal(false)} style={{ marginRight: "10px" }}>
                 Cancel
               </button>
               <button
@@ -265,7 +299,7 @@ export default function ToDoBoard() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.6)",
+            background: "rgba(0,0,0,0.7)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -274,7 +308,7 @@ export default function ToDoBoard() {
         >
           <div
             style={{
-              background: "#fff",
+              background: cardBg,
               padding: "28px",
               borderRadius: "20px",
               width: "400px",
