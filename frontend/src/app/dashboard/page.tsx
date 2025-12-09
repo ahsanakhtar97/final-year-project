@@ -38,8 +38,6 @@ const styles:Record<string,React.CSSProperties>={
     },
     pieChartTextStyle:{
         fontWeight:'bold',
-        
-
     }
 
 }

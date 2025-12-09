@@ -1,4 +1,5 @@
 import { Task } from "src/tasks/entities/task.entity";
+import { UserHabit } from "src/user-habits/entities/user-habit.entity";
 import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('users')
@@ -17,4 +18,7 @@ export class User {
 
     @OneToMany(()=> Task, (task)=>task.user)
     tasks:Task[]
+
+    @OneToMany(()=>UserHabit,(userhabit)=>userhabit.user)
+    userHabits:UserHabit[]
 }

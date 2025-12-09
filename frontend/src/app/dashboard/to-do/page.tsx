@@ -1,30 +1,54 @@
 "use client";
 
-import { useState } from "react";
-
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-}
-
+import { getTasksByStatus } from "@/app/actions/getUsers";
+import { createTask, removeTask, updateTaskStatus } from "@/app/actions/tasks";
+import { CreateTaskPayload, Task, TaskStatus } from "@/types/tasks";
+import { jwtDecode } from "jwt-decode";
+import { useEffect, useState } from "react";
 export default function ToDoBoard() {
+  const fetchTasks = async (id: number) => {
+  const todoTasks = await getTasksByStatus(id, TaskStatus.TO_DO);
+  const inProgressTasks = await getTasksByStatus(id, TaskStatus.IN_PROGRESS);
+  const completedTasks = await getTasksByStatus(id, TaskStatus.COMPLETED);
+
+  setColumns({
+    to_do: todoTasks,
+    in_progress: inProgressTasks,
+    completed: completedTasks,
+  });
+};
+
   const [columns, setColumns] = useState<{
-    todo: Task[];
-    inProgress: Task[];
+    to_do: Task[];
+    in_progress: Task[];
     completed: Task[];
   }>({
-    todo: [
-      { id: "1", title: "Study React", description: "Learn hooks and routing" },
-      { id: "2", title: "Build Kanban UI", description: "Create column layout and styles" },
-    ],
-    inProgress: [
-      { id: "3", title: "Work on Dashboard", description: "Design dashboard cards" },
-    ],
-    completed: [
-      { id: "4", title: "Project Setup Done", description: "Dependencies installed" },
-    ],
+    to_do: [],
+    in_progress: [],
+    completed: [],
   });
+  const [userId,setUserId]=useState<number>(-1);
+  useEffect(() => {
+  const token = localStorage.getItem("accessToken");
+
+  if (!token) return;
+
+  const payload = jwtDecode(token);
+  const sub=Number(payload.sub);
+  setUserId(sub);
+  // Create and call async inside effect
+  (async () => {
+    const todoTasks = await getTasksByStatus(sub, TaskStatus.TO_DO);
+    const inProgressTasks = await getTasksByStatus(sub, TaskStatus.IN_PROGRESS);
+    const completedTasks = await getTasksByStatus(sub, TaskStatus.COMPLETED);
+    setColumns({
+      to_do: todoTasks,
+      in_progress: inProgressTasks,
+      completed: completedTasks,
+    });
+  })();
+}, []);
+
 
   const [draggedItem, setDraggedItem] = useState<Task | null>(null);
   const [sourceColumn, setSourceColumn] = useState<string>("");
@@ -42,50 +66,41 @@ export default function ToDoBoard() {
     setSourceColumn(column);
   };
 
-  const handleDrop = (target: keyof typeof columns) => {
+  const handleDrop =async  (target: keyof typeof columns) => {
     if (!draggedItem) return;
-
-    setColumns((prev) => {
-      const updated = { ...prev };
-
-      updated[sourceColumn as keyof typeof columns] = updated[
-        sourceColumn as keyof typeof columns
-      ].filter((t) => t.id !== draggedItem.id);
-
-      updated[target] = [...updated[target], draggedItem];
-
-      return updated;
-    });
-
-    setDraggedItem(null);
+    try{
+      await updateTaskStatus(draggedItem.taskId,target as TaskStatus);
+      console.log(`Task ${draggedItem.taskId} moved to ${target}`);
+       await fetchTasks(userId);
+  } catch (error) {
+    console.error("Failed to update task status:", error);
+  }
+ 
+  // Clear dragged item
+  setDraggedItem(null);
   };
 
   const allowDrop = (e: React.DragEvent) => e.preventDefault();
 
-  const addTask = () => {
+  const addTask = async () => {
     if (!newTitle.trim()) return;
 
-    const task: Task = {
-      id: Date.now().toString(),
+    const task: CreateTaskPayload = {
+      userId,
       title: newTitle,
       description: newDescription,
+      taskStatus:TaskStatus.TO_DO
     };
-
-    setColumns((prev) => ({
-      ...prev,
-      todo: [...prev.todo, task],
-    }));
-
+    await createTask(task);
     setNewTitle("");
     setNewDescription("");
     setShowModal(false);
+    await fetchTasks(userId);
   };
 
-  const deleteTask = (id: string, column: keyof typeof columns) => {
-    setColumns((prev) => ({
-      ...prev,
-      [column]: prev[column].filter((t) => t.id !== id),
-    }));
+  const deleteTask = async (taskId: number) => {
+    await removeTask(taskId);
+    await fetchTasks(userId);
   };
 
   const boardStyle: React.CSSProperties = {
@@ -136,16 +151,16 @@ export default function ToDoBoard() {
             }}
           >
             <h2 style={{ textAlign: "center", textTransform: "capitalize" }}>
-              {columnKey === "todo"
+              {columnKey === "to_do"
                 ? "To Do"
-                : columnKey === "inProgress"
+                : columnKey === "in_progress"
                 ? "In Progress"
                 : "Completed"}
             </h2>
 
             {columns[columnKey].map((task) => (
               <div
-                key={task.id}
+                key={task.taskId}
                 draggable
                 onDragStart={() => handleDragStart(task, columnKey)}
                 onClick={() => setExpandedTask(task)}
@@ -165,7 +180,7 @@ export default function ToDoBoard() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    deleteTask(task.id, columnKey);
+                    deleteTask(task.taskId);
                   }}
                   style={{
                     position: "absolute",
@@ -201,9 +216,10 @@ export default function ToDoBoard() {
           <div
             style={{
               background: "#fff",
-              padding: "24px",
+              padding: "40px",
               borderRadius: "20px",
               width: "340px",
+              paddingRight:'60px'
             }}
           >
             <h2>Add New Task</h2>
@@ -234,10 +250,10 @@ export default function ToDoBoard() {
               }}
             />
 
-            <div style={{ marginTop: "16px", textAlign: "right" }}>
+            <div style={{ marginTop: "16px", textAlign: "right", }}>
               <button
                 onClick={() => setShowModal(false)}
-                style={{ marginRight: "10px" }}
+                style={{ marginRight: "10px",background:'red',color:'white',border:'none',padding:'10px 16px',borderRadius:'10px' }}
               >
                 Cancel
               </button>

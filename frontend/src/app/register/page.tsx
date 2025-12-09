@@ -2,15 +2,50 @@
 
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { registerUser } from "../actions/auth";
+import { jwtDecode } from "jwt-decode";
+import { toast, ToastContainer } from "react-toastify";
 
-export default function GetStarted() {
+export default function Register() {
   const router = useRouter();
-
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      const decoded: { exp: number } = jwtDecode(token);
+      const now = Date.now() / 1000;
+      if (decoded.exp > now) {
+        router.push('/dashboard');
+      }
+      else {
+        localStorage.removeItem('accessToken');
+      }
+
+    }
+  }, [router]);
+
+
+  async function handleRegister(e: React.FormEvent) {
+    e.preventDefault(); // prevent page reload
+    if (!name || !email || !password || !confirmPassword)
+      toast.error('Required fields missing');
+    if (password != confirmPassword)
+      toast.error('Passwords do not match');
+    else {
+      const user = await registerUser({ name, email, password });
+      if (user && user.accessToken) {
+        localStorage.setItem('accessToken', user.accessToken);
+        router.push('/dashboard')
+        toast.success('Register successful');
+      }
+    }
+  }
 
   return (
     <div
@@ -26,6 +61,7 @@ export default function GetStarted() {
         overflow: "hidden",
       }}
     >
+
       <div
         style={{
           width: "90%",
@@ -62,8 +98,11 @@ export default function GetStarted() {
           Begin your journey of mindful growth 🌱
         </p>
 
-        {/* SIGNUP INPUTS */}
-        <div style={{ marginTop: 20, textAlign: "left" }}>
+        {/* SIGNUP FORM */}
+        <form
+          onSubmit={handleRegister}
+          style={{ marginTop: 20, textAlign: "left" }}
+        >
           {/* NAME */}
           <input
             value={name}
@@ -125,26 +164,26 @@ export default function GetStarted() {
               fontSize: "1.05rem",
             }}
           />
-        </div>
 
-        {/* CREATE ACCOUNT BUTTON */}
-        <button
-          onClick={() => router.push("/signup")}
-          style={{
-            marginTop: 10,
-            padding: "14px 40px",
-            background: "#163b25",
-            color: "white",
-            fontSize: "1.25rem",
-            borderRadius: 12,
-            border: "none",
-            cursor: "pointer",
-            fontWeight: 600,
-            width: "100%",
-          }}
-        >
-          Create Account
-        </button>
+          {/* CREATE ACCOUNT BUTTON */}
+          <button
+            type="submit"
+            style={{
+              marginTop: 10,
+              padding: "14px 40px",
+              background: "#163b25",
+              color: "white",
+              fontSize: "1.25rem",
+              borderRadius: 12,
+              border: "none",
+              cursor: "pointer",
+              fontWeight: 600,
+              width: "100%",
+            }}
+          >
+            Create Account
+          </button>
+        </form>
 
         {/* LOGIN LINK */}
         <p

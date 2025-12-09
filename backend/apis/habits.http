@@ -1,0 +1,22 @@
+### Get all Habits
+GET http://localhost:3000/habits
+
+### Get habit by userId 
+GET http://localhost:3000/habits/1
+
+
+### Create a habit
+POST http://localhost:3000/habits
+Content-Type: application/json
+
+{
+    "habitName":"Go to gym",
+    "categoryId":1
+}
+
+### Delete a habit by Id
+DELETE http://localhost:3000/habits/18
+
+
+### Get category by Habit ID
+GET http://localhost:3000/habits/1/category

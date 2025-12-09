@@ -1,6 +1,9 @@
 ### GET ALL USERS
 GET http://localhost:3000/users
 
+### GET USER BY ID
+GET http://localhost:3000/users/1
+
 ### CREATE A USER
 POST http://localhost:3000/users
 Content-Type: application/json
@@ -15,5 +18,12 @@ Content-Type: application/json
 GET http://localhost:3000/users/1/tasks
 
 
+### Get users tasks by status
+GET http://localhost:3000/users/1/tasks/status/to_do
+
 ### Get users percentage by status
 GET http://localhost:3000/users/5/tasks/status/completed/percentage
+
+### Get all habits
+
+GET http://localhost:3000/users/1/habits

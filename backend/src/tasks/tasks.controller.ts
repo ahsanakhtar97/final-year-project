@@ -31,4 +31,8 @@ export class TasksController {
   async findByStatus(@Param('status') status:TaskStatus):Promise<Task[]>{
     return await this.tasksService.findByStatus(status);
   }
+  @Patch(':id/status/:newStatus')
+  async updateStatus(@Param('id') taskId:number,@Param('newStatus') newStatus:TaskStatus):Promise<string>{
+    return this.tasksService.updateStatus(+taskId,newStatus);
+  }
 }
