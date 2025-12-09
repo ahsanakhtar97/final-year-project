@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useTheme } from "@/app/dashboard/layout";
 
 interface Task {
   id: string;
@@ -9,13 +10,10 @@ interface Task {
 }
 
 export default function ToDoBoard() {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
 
-  const [columns, setColumns] = useState<{
-    todo: Task[];
-    inProgress: Task[];
-    completed: Task[];
-  }>({
+  const [columns, setColumns] = useState({
     todo: [
       { id: "1", title: "Study React", description: "Learn hooks and routing" },
       { id: "2", title: "Build Kanban UI", description: "Create column layout and styles" },
@@ -29,22 +27,26 @@ export default function ToDoBoard() {
   });
 
   const [draggedItem, setDraggedItem] = useState<Task | null>(null);
-  const [sourceColumn, setSourceColumn] = useState<string>("");
-
+  const [sourceColumn, setSourceColumn] = useState("");
   const [showModal, setShowModal] = useState(false);
+
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
-
   const [expandedTask, setExpandedTask] = useState<Task | null>(null);
 
-  const isDark = theme === "dark";
+  const boardStyle: React.CSSProperties = {
+    minHeight: "100vh",
+    padding: "30px",
+    background: isDark
+      ? "linear-gradient(180deg, #0f1f17, #1b2f24)"
+      : "linear-gradient(180deg, #dff8e3, #bfe7c5)",
+    color: isDark ? "#e5f5ec" : "#123716",
+    transition: "all 0.3s ease",
+  };
 
-  // ✅ Apply theme to full page
-  useEffect(() => {
-    document.body.style.background = isDark ? "#0f1f17" : "#dff8e3";
-    document.body.style.color = isDark ? "#e5f5ec" : "#123716";
-    document.body.style.transition = "background 0.3s ease, color 0.3s ease";
-  }, [isDark]);
+  const columnBg = isDark ? "#1f2f27" : "#ffffff";
+  const cardBg = isDark ? "#243b30" : "#ffffff";
+  const borderColor = isDark ? "#355a4a" : "#e5e5e5";
 
   const handleDragStart = (task: Task, column: string) => {
     setDraggedItem(task);
@@ -57,9 +59,9 @@ export default function ToDoBoard() {
     setColumns((prev) => {
       const updated = { ...prev };
 
-      updated[sourceColumn as keyof typeof columns] = updated[
-        sourceColumn as keyof typeof columns
-      ].filter((t) => t.id !== draggedItem.id);
+      updated[sourceColumn] = updated[sourceColumn].filter(
+        (t) => t.id !== draggedItem.id
+      );
 
       updated[target] = [...updated[target], draggedItem];
 
@@ -85,57 +87,16 @@ export default function ToDoBoard() {
       todo: [...prev.todo, task],
     }));
 
+    setShowModal(false);
     setNewTitle("");
     setNewDescription("");
-    setShowModal(false);
   };
-
-  const deleteTask = (id: string, column: keyof typeof columns) => {
-    setColumns((prev) => ({
-      ...prev,
-      [column]: prev[column].filter((t) => t.id !== id),
-    }));
-  };
-
-  const boardStyle: React.CSSProperties = {
-    minHeight: "100vh",
-    padding: "30px",
-    fontFamily: "'Lora', serif",
-    background: isDark
-      ? "linear-gradient(180deg, #0f1f17, #1b2f24)"
-      : "linear-gradient(180deg, #dff8e3, #bfe7c5)",
-    color: isDark ? "#e5f5ec" : "#123716",
-    transition: "all 0.3s ease",
-  };
-
-  const columnBg = isDark ? "#1f2f27" : "#ffffff";
-  const cardBg = isDark ? "#243b30" : "#ffffff";
-  const borderColor = isDark ? "#355a4a" : "#e5e5e5";
 
   return (
     <main style={boardStyle}>
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h1 style={{ fontSize: "34px" }}>To-Do List</h1>
+      <h1 style={{ fontSize: "34px" }}>To-Do List</h1>
 
-        {/* Theme Switch */}
-        <button
-          onClick={() => setTheme(isDark ? "light" : "dark")}
-          style={{
-            background: isDark ? "#e5f5ec" : "#163b25",
-            color: isDark ? "#123716" : "#fff",
-            padding: "10px 16px",
-            borderRadius: "12px",
-            border: "none",
-            cursor: "pointer",
-            fontWeight: 600,
-          }}
-        >
-          {isDark ? "☀ Light" : "🌙 Dark"}
-        </button>
-      </div>
-
-      {/* Add Task */}
+      {/* Add Task Button */}
       <div style={{ textAlign: "center", margin: "20px 0" }}>
         <button
           onClick={() => setShowModal(true)}
@@ -198,7 +159,10 @@ export default function ToDoBoard() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    deleteTask(task.id, columnKey);
+                    setColumns((prev) => ({
+                      ...prev,
+                      [columnKey]: prev[columnKey].filter((t) => t.id !== task.id),
+                    }));
                   }}
                   style={{
                     position: "absolute",
@@ -307,13 +271,13 @@ export default function ToDoBoard() {
           }}
         >
           <div
+            onClick={(e) => e.stopPropagation()}
             style={{
               background: cardBg,
               padding: "28px",
               borderRadius: "20px",
               width: "400px",
             }}
-            onClick={(e) => e.stopPropagation()}
           >
             <h2>{expandedTask.title}</h2>
             <p style={{ marginTop: "12px", lineHeight: "1.5" }}>
