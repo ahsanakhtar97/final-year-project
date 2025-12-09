@@ -1,5 +1,21 @@
-html, body {
-  margin: 0;
-  padding: 0;
-  font-family: sans-serif;
+/* Enable Dark Mode using the .dark root class */
+.dark {
+  color-scheme: dark;
+}
+
+/* Example containers */
+.dark .card {
+  background-color: #1a1a1a !important;
+}
+
+/* Sidebar */
+.dark .sidebar {
+  background-color: #111 !important;
+  border-color: #333 !important;
+}
+
+/* Habit tracker items */
+.dark .habit-item {
+  background-color: #1b1b1b !important;
+  border-color: #333 !important;
 }

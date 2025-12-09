@@ -9,7 +9,8 @@ import {
   LogOut,
   CheckSquare,
   Moon,
-  Sun
+  Sun,
+  Heart
 } from "lucide-react";
 import { useTheme } from "@/app/dashboard/layout";
 
@@ -39,15 +40,17 @@ export default function Sidebar() {
 
   // MATCH TO-DO GREENISH THEME
   const sidebarStyle: React.CSSProperties = {
-    width: "220px",
-    minHeight: "100vh",
-    padding: "20px",
-    background: theme === "dark"
-      ? "linear-gradient(180deg, #0f1f17, #1b2f24)"
-      : "linear-gradient(180deg, #dff8e3, #bfe7c5)",
-    color: theme === "dark" ? "#e5f5ec" : "#123716",
-    transition: "all 0.3s ease",
-  };
+  width: "220px",
+  minHeight: "100vh",
+  padding: "20px",
+  background: theme === "dark"
+    ? "#111"                       // DARK MODE FIX
+    : "linear-gradient(180deg, #dff8e3, #bfe7c5)",
+  color: theme === "dark" ? "#fff" : "#123716",
+  transition: "all 0.3s ease",
+  borderRight: theme === "dark" ? "1px solid #333" : "1px solid #aacfb3"
+};
+
 
   return (
     <aside style={sidebarStyle}>
@@ -102,7 +105,19 @@ export default function Sidebar() {
             <span>Profile</span>
           </Link>
         </li>
+
+        <li style={styles.menuItem}>
+          <Link
+            href="/dashboard/habit-tracker"
+            style={{ ...styles.linkStyle, color: "inherit" }}
+          >
+            <Heart size={20} />
+            <span>Habit Tracker</span>
+          </Link>
+        </li>
       </ul>
+      
+
 
       <div style={styles.menuItem}>
         <LogOut size={20} />

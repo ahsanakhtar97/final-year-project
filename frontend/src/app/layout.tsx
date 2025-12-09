@@ -1,34 +1,41 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+"use client";
+
+import { createContext, useContext, useEffect, useState } from "react";
 import "./globals.css";
-import { ToastContainer } from "react-toastify";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+const ThemeContext = createContext({
+  theme: "light",
+  toggleTheme: () => {},
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+export function useTheme() {
+  return useContext(ThemeContext);
+}
 
-export const metadata: Metadata = {
-  title: "GrowFlow",
-  description: "A mental health tracking app ",
-};
+export default function RootLayout({ children }) {
+  const [theme, setTheme] = useState("light");
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+  useEffect(() => {
+    const saved = localStorage.getItem("global_theme");
+    if (saved) {
+      setTheme(saved);
+      document.documentElement.classList.toggle("dark", saved === "dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    localStorage.setItem("global_theme", next);
+    document.documentElement.classList.toggle("dark", next === "dark");
+  };
+
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        {children}
-        <ToastContainer position="top-right" autoClose={3000}/>
-
+      <body className={`${theme === "dark" ? "dark" : ""}`}>
+        <ThemeContext.Provider value={{ theme, toggleTheme }}>
+          {children}
+        </ThemeContext.Provider>
       </body>
     </html>
   );
