@@ -10,3 +10,6 @@ Content-Type: application/json
     "userId":1,
     "habitId":4
 }
+
+### GET all habits assigned to a user
+GET http://localhost:3000/user-habits/user/1

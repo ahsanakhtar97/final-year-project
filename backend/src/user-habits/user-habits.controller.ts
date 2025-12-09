@@ -3,6 +3,7 @@ import { UserHabitsService } from './user-habits.service';
 import { CreateUserHabitDto } from './dto/create-user-habit.dto';
 import { UpdateUserHabitDto } from './dto/update-user-habit.dto';
 import { UserHabit } from './entities/user-habit.entity';
+import { Habit } from 'src/habits/entities/habit.entity';
 
 @Controller('user-habits')
 export class UserHabitsController {
@@ -31,5 +32,9 @@ export class UserHabitsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.userHabitsService.remove(+id);
+  }
+  @Get('user/:id')
+  async findHabitsByUserId(@Param('id') userId:number):Promise<any>{
+    return await this.userHabitsService.findHabitsByUserId(userId);
   }
 }
