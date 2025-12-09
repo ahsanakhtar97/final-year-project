@@ -3,7 +3,7 @@ GET http://localhost:3000/tasks
 
 
 ### Get task by ID
-GET http://localhost:3000/tasks/1
+GET http://localhost:3000/tasks/
 
 
 ### Create a new task
@@ -23,3 +23,7 @@ DELETE http://localhost:3000/tasks/13
 
 ### Get task by status
 GET http://localhost:3000/tasks/status/completed
+
+
+### Update task status
+PATCH http://localhost:3000/tasks/1/status/to_do

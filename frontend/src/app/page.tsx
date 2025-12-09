@@ -136,7 +136,7 @@ export default function Home() {
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => router.push("/get-started")}
+          onClick={() => router.push("/register")}
           style={{
             marginTop: 10,
             background: "#163b25",

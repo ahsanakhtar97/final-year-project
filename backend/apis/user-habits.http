@@ -1,0 +1,12 @@
+### Get all user-habits
+GET http://localhost:3000/user-habits
+
+
+### Assign a new habit to a user
+POST http://localhost:3000/user-habits
+Content-Type: application/json
+
+{
+    "userId":1,
+    "habitId":4
+}

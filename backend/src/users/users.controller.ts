@@ -28,9 +28,14 @@ export class UsersController {
   async getTasks(@Param('id') id:number):Promise<Task[]>{
     return await this.usersService.getTasks(+id);
   }
+  @Get(':id/tasks/status/:status')
+  async getTasksByStatus(@Param('id') id:number,@Param('status') status:TaskStatus):Promise<Task[]>{
+    return await this.usersService.getTasksByStatus(+id,status);
+  }
   @Get(':id/tasks/status/:status/percentage')
   async getPercentStatus(@Param('id') id:number,@Param('status') status:TaskStatus):Promise<any>{
     return await this.usersService.getPercentStatus(+id,status);
 
   }
+
 }

@@ -1,0 +1,22 @@
+
+### Get all categories
+GET http://localhost:3000/categories
+
+### Get a category by Id
+
+GET http://localhost:3000/categories/1
+
+### Create a category
+
+POST http://localhost:3000/categories
+Content-Type: application/json
+
+{
+    "categoryName":"Accounting"
+}
+
+### Update a category
+PATCH http://localhost:3000/categories/8/name/Business
+
+### Get habits by categoryId
+GET http://localhost:3000/categories/1/habits

@@ -1,12 +1,10 @@
 import axios, { AxiosInstance } from "axios";
 
-
-const api:AxiosInstance=axios.create({
-    baseURL:process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+const api: AxiosInstance = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000",
 });
 
-
-//Global Axios error handler
+// Global Axios error handler
 api.interceptors.response.use(
   (res) => res,
   (err) => {
@@ -14,15 +12,16 @@ api.interceptors.response.use(
     return Promise.reject(err);
   }
 );
-api.interceptors.request.use((config)=>{
-    const token=localStorage.getItem("accessToken");
-    if(typeof window!=='undefined'){
-    if(token && config.headers){
-        config.headers.set("Authorization",`Bearer ${token}`);
 
-    }}
-    return config;
-
+// Add Authorization header only on the client
+api.interceptors.request.use((config) => {
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("accessToken");
+    if (token && config.headers) {
+      config.headers["Authorization"] = `Bearer ${token}`;
+    }
+  }
+  return config;
 });
 
 export default api;

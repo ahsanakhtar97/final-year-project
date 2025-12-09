@@ -2,9 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import styles from "./styles.module.css";
-import loginUser from "../actions/login";
+import { loginUser } from "../actions/auth";
 import { useRouter } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
+import { toast, ToastContainer } from "react-toastify";
 
 
 export default function LoginPage() {
@@ -35,8 +36,10 @@ async function handleLogin(e:React.FormEvent){
     password
   });
   if(user && user.accessToken){
+    toast.success('Login Successful');
     localStorage.setItem('accessToken',user.accessToken);
     router.push('/dashboard');
+    
   }
 }
   catch(err){

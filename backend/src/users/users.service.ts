@@ -41,6 +41,11 @@ export class UsersService {
     const tasks=user.tasks;
     return tasks;
   }
+  async getTasksByStatus(id:number,status:TaskStatus):Promise<Task[]>{
+    const tasks=await this.getTasks(id);
+    const statusTasks=tasks.filter(task=>task.taskStatus==status)
+    return statusTasks;
+  }
 
   async getPercentStatus(id:number,status:TaskStatus):Promise<any>{
     const tasks=await this.getTasks(id);
