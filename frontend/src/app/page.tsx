@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import React, { useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import React, { useRef } from "react";
 
 export default function Home() {
   const router = useRouter();
@@ -18,288 +18,182 @@ export default function Home() {
 
   return (
     <div
-      style={{
-        width: "100%",
-        height: "100vh",
-        overflowY: "scroll",
-        scrollSnapType: "y mandatory",
-        scrollBehavior: "smooth",
-      }}
+      className="w-full h-screen overflow-y-scroll scroll-smooth snap-y snap-mandatory font-serif 
+      relative bg-gradient-to-br from-[#021a10] via-[#06361f] to-[#0c4a2a]"
     >
+      {/* Glow Effects */}
+      <div className="absolute w-[500px] h-[500px] bg-[rgba(72,255,187,0.15)] blur-[140px] top-[-200px] left-[-200px]"></div>
+      <div className="absolute w-[500px] h-[500px] bg-[rgba(80,255,200,0.12)] blur-[140px] bottom-[-200px] right-[-200px]"></div>
+
       {/* ---------------- NAVBAR ---------------- */}
       <motion.nav
-        initial={{ y: -40, opacity: 0 }}
+        initial={{ y: -25, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6 }}
-        style={{
-          position: "fixed",
-          top: 0,
-          width: "100%",
-          zIndex: 100,
-          background: "rgba(255,255,255,0.75)",
-          backdropFilter: "blur(12px)",
-          padding: "3px 5px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
+        className="fixed top-0 w-full z-50 
+        bg-[rgba(10,45,30,0.7)] backdrop-blur-xl border-b border-white/10 
+        py-3 px-6 
+        grid grid-cols-3 place-items-center"
       >
-        {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center" }}>
+        {/* Left: Logo */}
+        <div className="flex items-center gap-2 justify-start w-full">
           <Image
             src="/logo3.png"
-            width={90}
-            height={90}
+            width={70}
+            height={70}
             alt="GrowFlow"
-            style={{ objectFit: "contain" }}
+            className="object-contain"
           />
+          <span className="text-[#c7ffdc] text-2xl font-bold">GrowFlow</span>
         </div>
 
-        {/* Center Links */}
-        <div
-          style={{
-            display: "flex",
-            gap: 30,
-            fontSize: "1.1rem",
-            fontWeight: 500,
-          }}
-        >
-          {["Home", "About", "Contact"].map((text, index) => (
-            <motion.span
-              key={index}
-              whileHover={{ scale: 1.1 }}
-              style={{ cursor: "pointer" }}
-              onClick={() =>
-                scrollToSection(
-                  text === "Home"
-                    ? homeRef
-                    : text === "About"
-                    ? aboutRef
-                    : contactRef
-                )
-              }
-            >
-              {text}
-            </motion.span>
-          ))}
+        {/* Center: Nav Links */}
+        <div className="hidden md:flex gap-10 text-lg font-semibold text-[#c7ffdc] justify-center w-full">
+          <motion.span
+            whileHover={{ scale: 1.1 }}
+            onClick={() => scrollToSection(homeRef)}
+            className="cursor-pointer hover:text-[#9df2c8]"
+          >
+            Home
+          </motion.span>
+          <motion.span
+            whileHover={{ scale: 1.1 }}
+            onClick={() => scrollToSection(aboutRef)}
+            className="cursor-pointer hover:text-[#9df2c8]"
+          >
+            About
+          </motion.span>
+          <motion.span
+            whileHover={{ scale: 1.1 }}
+            onClick={() => scrollToSection(contactRef)}
+            className="cursor-pointer hover:text-[#9df2c8]"
+          >
+            Contact
+          </motion.span>
         </div>
 
-        {/* Login button */}
-        <motion.button
-          whileHover={{ scale: 1.08 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => router.push("/login")}
-          style={{
-            width: "80px",
-            background: "#dcdcdc",
-            color: "#123716",
-            padding: "10px 0px",
-            borderRadius: 10,
-            fontSize: "1.1rem",
-            fontWeight: 800,
-            cursor: "pointer",
-            border: "none",
-            boxSizing: "border-box",
-            marginRight: "40px",
-          }}
-        >
-          Login
-        </motion.button>
+        {/* Right: Login Button */}
+        <div className="flex justify-end w-full">
+          <motion.button
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => router.push("/login")}
+            className="px-6 py-2 rounded-xl font-bold text-[#012016]
+            bg-gradient-to-br from-[#1fbf75] to-[#108a54] shadow-lg"
+          >
+            Login
+          </motion.button>
+        </div>
       </motion.nav>
 
       {/* ---------------- HOME SECTION ---------------- */}
-      <motion.div
+      <motion.section
         ref={homeRef}
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.4 }}
         transition={{ duration: 0.8 }}
-        style={{
-          scrollSnapAlign: "start",
-          width: "100%",
-          height: "100vh",
-          paddingTop: 300,
-          background:
-            "radial-gradient(circle at 50% 40%, #dff8e3 0%, #d0eed4 25%), linear-gradient(180deg, #def8e8, #bfe7c5)",
-          fontFamily: "'Lora','Georgia', serif",
-          textAlign: "center",
-        }}
+        className="snap-start h-screen flex flex-col items-center justify-center text-center px-6"
       >
-        <h1 style={{ fontSize: "3rem", fontWeight: 600 }}>
+        <h1 className="text-4xl md:text-6xl font-bold text-[#c7ffdc] drop-shadow-lg">
           Grow Within, Flow Beyond
         </h1>
 
-        <p style={{ fontSize: "1.2rem", marginTop: 10 }}>
-          A space to reflect, recharge, and realign with yourself.
+        <p className="text-lg md:text-xl text-[#9df2c8] mt-4 max-w-lg leading-relaxed">
+          A space to reflect, recharge, and realign with yourself 🌿
         </p>
 
         <motion.button
-          whileHover={{ scale: 1.1 }}
+          whileHover={{ scale: 1.08 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => router.push("/register")}
-          style={{
-            marginTop: 10,
-            background: "#163b25",
-            color: "white",
-            padding: "20px 35px",
-            borderRadius: 10,
-            cursor: "pointer",
-            border: "none",
-          }}
+          className="mt-6 bg-gradient-to-br from-[#1fbf75] to-[#108a54] 
+          text-[#012016] px-8 py-4 rounded-2xl shadow-xl font-bold text-lg"
         >
           Get Started
         </motion.button>
-      </motion.div>
+      </motion.section>
 
       {/* ---------------- ABOUT SECTION ---------------- */}
-      <motion.div
+      <motion.section
         ref={aboutRef}
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.2 }}
         transition={{ duration: 0.8 }}
-        style={{
-          scrollSnapAlign: "start",
-          width: "100%",
-          minHeight: "100vh",
-          padding: "120px 20px 60px",
-          background:
-            "radial-gradient(circle at 50% 40%, #dff8e3 0%, #d0eed4 25%), linear-gradient(180deg, #def8e8, #bfe7c5)",
-          fontFamily: "'Lora','Georgia', serif",
-        }}
+        className="snap-start min-h-screen py-28 px-6"
       >
-        <h1 style={{ fontSize: "3rem", fontWeight: 600, textAlign: "center" }}>
+        <h1 className="text-center text-4xl md:text-5xl font-bold text-[#c7ffdc] drop-shadow-lg">
           About GrowFlow
         </h1>
 
-        <p
-          style={{
-            fontSize: "1.1rem",
-            marginTop: 20,
-            lineHeight: 1.6,
-            maxWidth: 900,
-            margin: "20px auto",
-            textAlign: "center",
-          }}
-        >
-          GrowFlow helps individuals and teams cultivate mindful progress...
+        <p className="text-center text-lg mt-6 max-w-3xl mx-auto text-[#9df2c8] leading-relaxed">
+          GrowFlow helps individuals and teams cultivate mindful progress by tracking habits,
+          improving mindset, reflecting on growth, and staying motivated with guided prompts.
         </p>
 
-        <h2
-          style={{
-            fontSize: "1.8rem",
-            marginTop: 40,
-            textAlign: "center",
-            fontWeight: 600,
-          }}
-        >
+        <h2 className="text-center mt-16 text-3xl font-semibold text-[#c7ffdc]">
           Meet the Developers
         </h2>
 
         {/* Developer Cards */}
-        <div
-          style={{
-            display: "flex",
-            gap: 32,
-            flexWrap: "wrap",
-            marginTop: 30,
-            justifyContent: "center",
-          }}
-        >
+        <div className="flex flex-wrap justify-center gap-10 mt-12">
           {[
             { img: "/ahsan.jpeg", name: "Ahsan Akhtar", mail: "k224021@nu.edu.pk" },
-            { img: "/asad1.jpeg", name: "Asad Irfan", mail: "k224276@nu.edu.pk" },
-            { img: "/hassan.png", name: "Hassan Murad", mail: "k224802@nu.edu.pk" },
-          ].map((dev, index) => (
+            { img: "/asad26.jpeg", name: "Asad Irfan", mail: "k224276@nu.edu.pk" },
+            { img: "/hassan2.jpeg", name: "Hassan Murad", mail: "k224802@nu.edu.pk" },
+          ].map((dev, i) => (
             <motion.div
-              key={index}
-              whileHover={{ scale: 1.05, y: -6 }}
-              transition={{ type: "spring", stiffness: 200 }}
-              style={{
-                width: 260,
-                background: "white",
-                padding: 16,
-                borderRadius: 14,
-                textAlign: "center",
-                boxShadow: "0px 4px 14px rgba(0,0,0,0.12)",
-              }}
+              key={i}
+              whileHover={{ scale: 1.05, y: -5 }}
+              className="bg-[rgba(10,45,30,0.7)] backdrop-blur-xl border border-white/10 
+              w-72 p-6 rounded-2xl shadow-xl text-center"
             >
               <Image
                 src={dev.img}
-                width={240}
-                height={240}
+                width={300}
+                height={300}
                 alt={dev.name}
-                style={{ borderRadius: 12 }}
+                className="w-full aspect-square object-cover rounded-xl shadow-md"
               />
-              <h4 style={{ marginTop: 12, fontSize: "1.1rem", fontWeight: 600 }}>
-                {dev.name}
-              </h4>
-              <p style={{ opacity: 0.8 }}>{dev.mail}</p>
+              <h4 className="mt-4 text-xl font-semibold text-[#c7ffdc]">{dev.name}</h4>
+              <p className="text-[#9df2c8]">{dev.mail}</p>
             </motion.div>
           ))}
         </div>
-      </motion.div>
+      </motion.section>
 
       {/* ---------------- CONTACT SECTION ---------------- */}
-      <motion.div
+      <motion.section
         ref={contactRef}
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.2 }}
         transition={{ duration: 0.8 }}
-        style={{
-          scrollSnapAlign: "start",
-          width: "100%",
-          minHeight: "100vh",
-          padding: "120px 20px 60px",
-          background:
-            "radial-gradient(circle at 50% 40%, #dff8e3 0%, #d0eed4 25%), linear-gradient(180deg, #def8e8, #bfe7c5)",
-          fontFamily: "'Lora','Georgia', serif",
-        }}
+        className="snap-start min-h-screen py-28 px-6"
       >
-        <h1
-          style={{ fontSize: "2.6rem", fontWeight: 700, textAlign: "center" }}
-        >
+        <h1 className="text-center text-4xl font-bold text-[#c7ffdc] drop-shadow-lg">
           Contact Us
         </h1>
 
-        <p
-          style={{
-            fontSize: "1.2rem",
-            opacity: 0.9,
-            marginTop: 10,
-            textAlign: "center",
-          }}
-        >
+        <p className="text-center text-lg mt-3 text-[#9df2c8]">
           Have questions or feedback? We'd love to hear from you.
         </p>
 
         <motion.div
           whileHover={{ scale: 1.02 }}
-          style={{
-            background: "white",
-            padding: 30,
-            borderRadius: 18,
-            maxWidth: 700,
-            margin: "40px auto",
-            boxShadow: "0px 4px 14px rgba(0,0,0,0.12)",
-          }}
+          className="bg-[rgba(10,45,30,0.7)] backdrop-blur-xl 
+          max-w-xl mx-auto mt-10 p-10 rounded-2xl shadow-xl border border-white/10"
         >
-          <h3 style={{ fontSize: "1.3rem", fontWeight: 600 }}>
-            General Support
-          </h3>
-          <p style={{ opacity: 0.8, marginTop: 4 }}>📩 support@growflow.app</p>
+          <h3 className="text-xl font-semibold text-[#c7ffdc]">General Support</h3>
+          <p className="text-[#9df2c8] mt-1">📩 support@growflow.app</p>
 
-          <h3
-            style={{ marginTop: 22, fontSize: "1.3rem", fontWeight: 600 }}
-          >
-            Developer Contacts
-          </h3>
-          <p>Ahsan — k224021@nu.edu.pk</p>
-          <p>Asad — k224276@nu.edu.pk</p>
-          <p>Hassan — k224802@nu.edu.pk</p>
+          <h3 className="text-xl font-semibold text-[#c7ffdc] mt-6">Developer Contacts</h3>
+          <p className="text-[#9df2c8]">Ahsan — k224021@nu.edu.pk</p>
+          <p className="text-[#9df2c8]">Asad — k224276@nu.edu.pk</p>
+          <p className="text-[#9df2c8]">Hassan — k224802@nu.edu.pk</p>
         </motion.div>
-      </motion.div>
+      </motion.section>
     </div>
   );
 }
