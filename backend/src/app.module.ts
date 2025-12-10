@@ -11,9 +11,10 @@ import { TasksModule } from './tasks/tasks.module';
 import { CategoriesModule } from './categories/categories.module';
 import { HabitsModule } from './habits/habits.module';
 import { UserHabitsModule } from './user-habits/user-habits.module';
+import { HabitLogsModule } from './habit-logs/habit-logs.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({isGlobal:true}), DatabaseModule, UsersModule, AuthModule, TasksModule, CategoriesModule, HabitsModule, UserHabitsModule],
+  imports: [ConfigModule.forRoot({isGlobal:true}), DatabaseModule, UsersModule, AuthModule, TasksModule, CategoriesModule, HabitsModule, UserHabitsModule, HabitLogsModule],
   controllers: [AppController],
   providers: [AppService],
 })

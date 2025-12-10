@@ -4,6 +4,7 @@ import { UpdateUserHabitDto } from './dto/update-user-habit.dto';
 import { UserHabit } from './entities/user-habit.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Habit } from 'src/habits/entities/habit.entity';
 
 @Injectable()
 export class UserHabitsService {
@@ -31,5 +32,10 @@ export class UserHabitsService {
 
   remove(id: number) {
     return `This action removes a #${id} userHabit`;
+  }
+  async findHabitsByUserId(userId:number):Promise<any>{
+    const userHabits=await this.userHabitRepository.find({where:{userId},relations:['habit','habit.category']});
+    const habits=userHabits.map(habit=>habit.habit);
+    return habits;
   }
 }
