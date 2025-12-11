@@ -4,9 +4,6 @@ import api from "@/lib/axios";
 import { Category } from "@/types/categories";
 import { Habit } from "@/types/habits";
 
-
-
-
 export async function getCategories():Promise<Category[]>{
     const res=await api.get<Category[]>('categories/')
     return res.data;

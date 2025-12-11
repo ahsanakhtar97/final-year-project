@@ -1,0 +1,29 @@
+### Base URL
+@baseUrl = http://localhost:3000/habit-logs
+
+### Create Habit Log
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "userHabitId": 1,
+  "date": "2025-12-10",
+  "status": "completed"
+}
+
+### Get All Habit Logs
+GET {{baseUrl}}
+
+### Get One Habit Log
+GET {{baseUrl}}/1
+
+### Update Habit Log
+PATCH {{baseUrl}}/8
+Content-Type: application/json
+
+{
+  "status": "not_completed"
+}
+
+### Delete Habit Log
+DELETE {{baseUrl}}/1

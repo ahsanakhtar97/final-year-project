@@ -4,6 +4,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { User } from './entities/user.entity';
 import { Task } from 'src/tasks/entities/task.entity';
 import { TaskStatus } from 'src/tasks/enums/task-status.enum';
+import { UpdateUserDto } from './dto/update-user.dto';
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -37,5 +38,13 @@ export class UsersController {
     return await this.usersService.getPercentStatus(+id,status);
 
   }
+  @Patch(':id')
+  async updateUser(@Param('id') userId:number,@Body() updateUserDto:UpdateUserDto){
+    return await this.usersService.updateUser(userId,updateUserDto);
+  }
+  @Delete(':id')
+async deleteUser(@Param('id') id: number) {
+  return await this.usersService.remove(id);
+}
 
 }

@@ -1,9 +1,14 @@
+@baseUrl = http://localhost:3000/user-habits
+ 
+### Get a user habit
+GET {{baseUrl}}/user/1/habit/1
+
 ### Get all user-habits
-GET http://localhost:3000/user-habits
+GET {{baseUrl}}
 
 
 ### Assign a new habit to a user
-POST http://localhost:3000/user-habits
+POST {{baseUrl}}
 Content-Type: application/json
 
 {
@@ -11,5 +16,32 @@ Content-Type: application/json
     "habitId":4
 }
 
-### GET all habits assigned to a user
-GET http://localhost:3000/user-habits/user/1
+### Get all habits assigned to a user
+GET {{baseUrl}}/user/1
+
+
+
+### Get all  weekly logs of using userId
+
+GET {{baseUrl}}/logs/last7days/1
+
+
+
+### Get all status of habits of a user using userId
+
+GET {{baseUrl}}/user/1/stats
+
+
+### GET the best and worst habit of a user
+GET {{baseUrl}}/user/1/stats/best-worst
+
+### Get streak
+GET {{baseUrl}}/user/1/stats/streaks
+
+
+### Get number of completed taks for past N days
+GET {{baseUrl}}/user/1/completed/
+
+
+### Remove a habit from a user
+DELETE {{baseUrl}}/user/1/habit/1

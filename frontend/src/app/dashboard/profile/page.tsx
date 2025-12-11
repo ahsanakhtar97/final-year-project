@@ -1,21 +1,97 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "react-toastify";
+import { jwtDecode } from "jwt-decode";
+import { deleteUser, updateUser } from "@/app/actions/getUsers";
+import { UpdateUserPayload } from "@/types/users";
+import { useRouter } from "next/navigation";
 
 export default function ProfilePage() {
-  const [name, setName] = useState("Ahsan Akhtar");
-  const [email, setEmail] = useState("ahsan@example.com");
+  const router = useRouter();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [image, setImage] = useState("/default-avatar.png");
+  const [userId, setUserId] = useState(0);
 
-  const handleSave = () => {
-    toast.success("Profile updated successfully!");
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+      const payload: { sub: Number; name: string; email: string } =
+        jwtDecode(token);
+
+      setUserId(Number(payload.sub));
+      setName(String(payload.name));
+      setEmail(String(payload.email));
+    }
+  }, []);
+
+  // ===============================
+  // SAVE PROFILE
+  // ===============================
+  const handleSave = async () => {
+    if (!name || !email) {
+      toast.error("Name and email cannot be empty");
+      return;
+    }
+
+    // Build update payload
+    const data: UpdateUserPayload = {
+      name,
+      email,
+      ...(password
+        ? {
+          password,
+          confirmPassword,
+        }
+        : {}), // only send password IF user is updating it
+    };
+
+    try {
+      const res = await updateUser(userId, data);
+      localStorage.setItem('accessToken', res.accessToken);
+      toast.success(res.message);
+
+      // Reset password fields after update
+      setPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      console.error(error);
+
+      const message =
+        error?.response?.data?.message || "Failed to update profile";
+
+      toast.error(message);
+    }
+  };
+  const handleDelete = async () => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete your account? This action cannot be undone."
+    );
+
+    if (!confirmed) return;
+
+    try {
+      // Call your API to delete the user
+      await deleteUser(userId); // make sure you implement this API call
+      toast.success("Account deleted successfully!");
+
+      // Remove token
+      localStorage.removeItem("accessToken");
+
+      // Redirect to login
+      router.push("/login");
+    } catch (error: any) {
+      console.error(error);
+      toast.error("Failed to delete account.");
+    }
   };
 
   return (
@@ -26,24 +102,22 @@ export default function ProfilePage() {
         text-[#d4f3e0]
       "
     >
-      {/* PAGE HEADING */}
       <h1 className="text-4xl font-bold mb-10 text-[#c8fadd]">
         Profile Settings
       </h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-        {/* ======================= */}
-        {/*       LEFT SIDEBAR      */}
-        {/* ======================= */}
-        <Card className="
+        {/* LEFT SIDEBAR */}
+        <Card
+          className="
           col-span-1
           rounded-2xl 
           bg-[#0d281b]/60 
           backdrop-blur-md 
           border border-[#1f4d33]
           shadow-xl shadow-[#0f381f]/40
-        ">
+        "
+        >
           <CardHeader>
             <CardTitle className="text-[#c8fadd] tracking-wide">
               Your Profile
@@ -78,17 +152,17 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* ======================= */}
-        {/*     EDIT INFORMATION    */}
-        {/* ======================= */}
-        <Card className="
+        {/* RIGHT EDIT SECTION */}
+        <Card
+          className="
           col-span-2 
           rounded-2xl 
           bg-[#0d281b]/60 
           backdrop-blur-md 
           border border-[#1f4d33]
           shadow-xl shadow-[#0f381f]/40
-        ">
+        "
+        >
           <CardHeader>
             <CardTitle className="text-[#c8fadd] tracking-wide">
               Edit Information
@@ -96,7 +170,6 @@ export default function ProfilePage() {
           </CardHeader>
 
           <CardContent className="space-y-6">
-
             {/* NAME */}
             <div className="space-y-2">
               <Label className="text-[#bff2d6]">Full Name</Label>
@@ -144,6 +217,24 @@ export default function ProfilePage() {
               />
             </div>
 
+            {/* CONFIRM PASSWORD */}
+            {password && (
+              <div className="space-y-2">
+                <Label className="text-[#bff2d6]">Confirm Password</Label>
+                <Input
+                  type="password"
+                  className="
+                    bg-[#0b1f16] 
+                    border border-[#1f4d33] 
+                    focus:border-[#2bb673]
+                    text-white
+                  "
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </div>
+            )}
+
             <Button
               onClick={handleSave}
               className="
@@ -161,19 +252,21 @@ export default function ProfilePage() {
         </Card>
       </div>
 
-      {/* ======================= */}
-      {/*      DANGER ZONE        */}
-      {/* ======================= */}
-      <Card className="
+      {/* DANGER ZONE */}
+      <Card
+        className="
         mt-10 
         rounded-2xl 
         bg-[#300f0f]/60 
         backdrop-blur-md 
         border border-red-900
         shadow-xl shadow-red-950/40
-      ">
+      "
+      >
         <CardHeader>
-          <CardTitle className="text-red-300 tracking-wide">Danger Zone</CardTitle>
+          <CardTitle className="text-red-300 tracking-wide">
+            Danger Zone
+          </CardTitle>
         </CardHeader>
 
         <CardContent>
@@ -184,10 +277,11 @@ export default function ProfilePage() {
           <Button
             variant="destructive"
             className="w-full py-6 text-lg rounded-xl"
-            onClick={() => toast.error("Account deletion not implemented.")}
+            onClick={handleDelete}
           >
             Delete Account
           </Button>
+
         </CardContent>
       </Card>
     </div>

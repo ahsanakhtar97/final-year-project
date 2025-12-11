@@ -25,7 +25,8 @@ CREATE TABLE "tasks" (
   "title" varchar,
   "description" varchar,
   "task_status" task_status DEFAULT 'to_do',
-  FOREIGN KEY ("user_id") REFERENCES "users" ("user_id")
+  "completed_at" TIMESTAMP DEFAULT NULL,
+  FOREIGN KEY ("user_id") REFERENCES "users" ("user_id") ON DELETE CASCADE
 );
 
 -- CATEGORIES TABLE
@@ -39,7 +40,7 @@ CREATE TABLE "habits" (
   "habit_id" serial PRIMARY KEY,
   "habit_name" varchar NOT NULL,
   "category_id" int,
-  FOREIGN KEY ("category_id") REFERENCES "categories" ("category_id")
+  FOREIGN KEY ("category_id") REFERENCES "categories" ("category_id") ON DELETE CASCADE
 );
 
 -- USER_HABITS TABLE
@@ -49,8 +50,8 @@ CREATE TABLE "user_habits" (
   "user_id" int NOT NULL,
   "start_date" date DEFAULT CURRENT_DATE,
   UNIQUE("user_id", "habit_id"),
-  FOREIGN KEY ("habit_id") REFERENCES "habits" ("habit_id"),
-  FOREIGN KEY ("user_id") REFERENCES "users" ("user_id")
+  FOREIGN KEY ("habit_id") REFERENCES "habits" ("habit_id") ON DELETE CASCADE,
+  FOREIGN KEY ("user_id") REFERENCES "users" ("user_id") ON DELETE CASCADE
 );
 
 -- HABIT_LOGS TABLE
@@ -60,8 +61,29 @@ CREATE TABLE "habit_logs" (
   "date" date NOT NULL,
   "status" habit_status DEFAULT 'not_completed',
   UNIQUE ("user_habit_id", "date"),
-  FOREIGN KEY ("user_habit_id") REFERENCES "user_habits" ("user_habit_id")
+  FOREIGN KEY ("user_habit_id") REFERENCES "user_habits" ("user_habit_id") ON DELETE CASCADE
 );
+
+-- TRIGGERS
+CREATE OR REPLACE FUNCTION set_completed_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- When task_status is changed to 'completed', set completed_at to current timestamp
+    IF NEW.task_status = 'completed' AND (OLD.task_status IS DISTINCT FROM 'completed') THEN
+        NEW.completed_at := NOW();
+    -- When task_status is changed away from 'completed', clear completed_at
+    ELSIF NEW.task_status <> 'completed' THEN
+        NEW.completed_at := NULL;
+    END IF;
+    RETURN NEW;
+END;
+
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER trigger_set_completed_at
+BEFORE INSERT OR UPDATE ON tasks
+FOR EACH ROW
+EXECUTE FUNCTION set_completed_at();
+
 
 -- SAMPLE DATA
 INSERT INTO categories (category_name) VALUES
@@ -76,24 +98,45 @@ INSERT INTO users (name, email, password_hash) VALUES
 ('Ali Khan', 'ali@example.com', '$2a$12$SY6elPZUwn4r05PotfWeleVbxY1Oxgl697F38GVIg0yz2LFQ3gAJi'),
 ('Sara Ahmed', 'sara@example.com', '$2a$12$SY6elPZUwn4r05PotfWeleVbxY1Oxgl697F38GVIg0yz2LFQ3gAJi'),
 ('John Doe', 'john@example.com', '$2a$12$SY6elPZUwn4r05PotfWeleVbxY1Oxgl697F38GVIg0yz2LFQ3gAJi'),
-('Maria Khan', 'maria@example.com', '$2a$12$SY6elPZUwn4r05PotfWeleVbxY1Oxgl697F38GVIg0yz2LFQ3gAJi');
+('Maria Khan', 'maria@example.com', '$2a$12$SY6elPZUwn4r05PotfWeleVbxY1Oxgl697F38GVIg0yz2LFQ3gAJi'),
+('Ahsan Akhtar','ahsan@example.com','$2a$12$SY6elPZUwn4r05PotfWeleVbxY1Oxgl697F38GVIg0yz2LFQ3gAJi');
 
 INSERT INTO tasks (user_id, title, description, task_status) VALUES
+-- User 1
 (1, 'Setup project repo', 'Initialize GitHub repository and set up project structure', 'completed'),
 (1, 'Design database schema', 'Create ER diagram and define tables', 'in_progress'),
 (1, 'Write API documentation', 'Document endpoints for the backend', 'to_do'),
+(1, 'Implement authentication', 'Add JWT login/logout endpoints', 'completed'),
+(1, 'Create unit tests for API', 'Write Jest tests for backend routes', 'to_do'),
 
+-- User 2
 (2, 'Frontend login page', 'Develop login form using React', 'completed'),
 (2, 'Integrate API', 'Connect frontend with backend endpoints', 'in_progress'),
 (2, 'Write unit tests', 'Test React components with Jest', 'to_do'),
+(2, 'Design dashboard UI', 'Create reusable components for dashboard', 'completed'),
+(2, 'Implement theme switcher', 'Add dark/light mode toggle', 'in_progress'),
 
+-- User 3
 (3, 'Create Docker setup', 'Setup Dockerfile and docker-compose for project', 'to_do'),
 (3, 'Configure CI/CD', 'Set up GitHub Actions workflow', 'in_progress'),
 (3, 'Deploy to staging', 'Deploy application to staging server', 'to_do'),
+(3, 'Setup monitoring', 'Add Prometheus + Grafana for metrics', 'completed'),
+(3, 'Write deployment docs', 'Document deployment steps and rollback plan', 'to_do'),
 
+-- User 4
 (4, 'Design logo', 'Create a logo for the project', 'completed'),
 (4, 'Write user guide', 'Prepare documentation for end users', 'in_progress'),
-(4, 'Perform usability testing', 'Test application with sample users', 'to_do');
+(4, 'Perform usability testing', 'Test application with sample users', 'to_do'),
+(4, 'Create marketing banner', 'Design banner for social media', 'completed'),
+(4, 'Setup analytics', 'Integrate Google Analytics with frontend', 'in_progress'),
+
+-- User 5 (new user)
+(5, 'Research competitors', 'Analyze competitors’ apps and features', 'completed'),
+(5, 'Create project roadmap', 'Plan milestones and deliverables', 'to_do'),
+(5, 'Define OKRs', 'Set objectives and key results', 'in_progress'),
+(5, 'Conduct survey', 'Collect user feedback through online survey', 'completed'),
+(5, 'Prepare pitch deck', 'Slides for investor presentation', 'to_do');
+
 
 INSERT INTO habits (habit_name, category_id) VALUES
 -- Health
@@ -148,7 +191,14 @@ INSERT INTO user_habits (habit_id, user_id, start_date) VALUES
 (4, 4, '2025-12-01'),
 (8, 4, '2025-12-01'),
 (12, 4, '2025-12-01'),
-(17, 4, '2025-12-01');
+(17, 4, '2025-12-01'),
+
+-- User 5 habits
+(1, 5, '2025-12-01'),
+(5, 5, '2025-12-01'),
+(9, 5, '2025-12-01'),
+(14, 5, '2025-12-01');
+
 
 
 -- habit logs for Ali Only

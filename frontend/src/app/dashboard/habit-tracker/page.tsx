@@ -1,494 +1,297 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-// Adjust this import if your ThemeContext/useTheme is exported from a different module
-// e.g. import { useTheme } from "@/app/dashboard/layout";
+import React, { useEffect, useState, useMemo } from "react";
 import { useTheme } from "@/app/layout";
+import { Habit } from "@/types/habits";
+import { getUserId } from "@/lib/utils";
+import { assignHabit, getHabitsByUserId, revokeHabit} from "@/app/actions/user-habits";
+import { completeHabit } from "@/app/actions/habit-logs";
+import { getHabits } from "@/app/actions/habits";
+import { getCategories } from "@/app/actions/categories";
+import { Category } from "@/types/categories";
+import { CreateUserHabitPayload } from "@/types/user-habits";
+import { toast } from "react-toastify";
 
-type HabitType = "positive" | "bad";
+export default function HabitsPage() {
+  const { theme } = useTheme();
 
-type Habit = {
-  id: string;
-  name: string;
-  description?: string;
-  type: HabitType;
-  records: Record<string, boolean>;
-};
-
-const HABIT_CATEGORIES: Record<
-  string,
-  { name: string; description: string; type: HabitType }[]
-> = {
-  Health: [
-    {
-      name: "Drink 8 Glasses of Water",
-      description: "Stay hydrated throughout the day.",
-      type: "positive",
-    },
-    {
-      name: "Sleep 8 Hours",
-      description: "Maintain a consistent sleep cycle.",
-      type: "positive",
-    },
-  ],
-
-  Fitness: [
-    {
-      name: "Walk 10,000 Steps",
-      description: "Boost your heart health and endurance.",
-      type: "positive",
-    },
-    {
-      name: "Do 20 Pushups",
-      description: "Strengthen upper body muscles.",
-      type: "positive",
-    },
-  ],
-
-  Productivity: [
-    {
-      name: "Plan My Day",
-      description: "Prioritize tasks and goals.",
-      type: "positive",
-    },
-    {
-      name: "Deep Work Session",
-      description: "Work with 100% focus for a set time.",
-      type: "positive",
-    },
-  ],
-
-  Mindset: [
-    {
-      name: "Meditate 10 Minutes",
-      description: "Improve mindfulness and relaxation.",
-      type: "positive",
-    },
-    {
-      name: "Gratitude Journal",
-      description: "Write 3 things you're grateful for.",
-      type: "positive",
-    },
-  ],
-
-  "Bad Habits": [
-    {
-      name: "No Junk Food",
-      description: "Avoid unhealthy eating.",
-      type: "bad",
-    },
-    {
-      name: "No Procrastination",
-      description: "Stay disciplined with tasks.",
-      type: "bad",
-    },
-  ],
-};
-
-const DATE_KEY = (d = new Date()) => d.toISOString().slice(0, 10);
-
-const startOfWeek = (d = new Date()) => {
-  const date = new Date(d);
-  const day = date.getDay();
-  const diff = (day + 6) % 7;
-  date.setDate(date.getDate() - diff);
-  date.setHours(0, 0, 0, 0);
-  return date;
-};
-
-const weekDates = () => {
-  const start = startOfWeek();
-  return Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    return d;
-  });
-};
-
-const STORAGE_KEY = "growflow_habits_v3";
-
-export default function HabitTrackerPage() {
-  const { theme } = useTheme(); // "light" | "dark"
-
+  const [userHabits, setUserHabits] = useState<(Habit & { completed?: boolean })[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  // modal
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [userId, setUserId] = useState<number>(0);
 
   useEffect(() => {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
+    async function fetchData() {
       try {
-        setHabits(JSON.parse(raw));
-      } catch (e) {
-        console.error("Failed to parse habits from storage", e);
+        setLoading(true);
+        const uid = getUserId();
+        if (!uid) return;
+
+        setUserId(uid);
+
+        const [allHabits, userHabits, allCategories] = await Promise.all([
+          getHabits(),
+          getHabitsByUserId(uid),
+          getCategories(),
+        ]);
+
+        setHabits(allHabits);
+        setUserHabits(userHabits);
+        setCategories(allCategories);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
     }
+    fetchData();
   }, []);
 
-  useEffect(() => {
+  const habitsByCategory = useMemo(() => {
+    const map: Record<string, Habit[]> = {};
+    categories.forEach((cat) => {
+      map[cat.categoryId] = habits.filter((h) => h.categoryId === cat.categoryId);
+    });
+    return map;
+  }, [categories, habits]);
+
+  const addHabit = async (habit: Habit) => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(habits));
-    } catch (e) {
-      console.error("Failed to save habits", e);
+      const payload: CreateUserHabitPayload = { userId, habitId: habit.habitId };
+      await assignHabit(payload);
+      setUserHabits((prev) => [...prev, { ...habit, completed: false }]);
+      setShowModal(false);
+      setSelectedCategory("");
+      toast.success("Habit added!");
+    } catch (err) {
+      toast.error("Error adding habit");
     }
-  }, [habits]);
-
-  const addPredefinedHabit = (habitTemplate: {
-    name: string;
-    description: string;
-    type: HabitType;
-  }) => {
-    const habit: Habit = {
-      id: Date.now().toString(),
-      name: habitTemplate.name,
-      description: habitTemplate.description,
-      type: habitTemplate.type,
-      records: {},
-    };
-
-    setHabits((s) => [habit, ...s]);
   };
 
-  const deleteHabit = (id: string) => {
-    if (!confirm("Delete this habit?")) return;
-    setHabits((s) => s.filter((h) => h.id !== id));
-    if (expandedId === id) setExpandedId(null);
+  const deleteHabit = async (habit: Habit) => {
+    try {
+      await revokeHabit({ userId, habitId: habit.habitId });
+      setUserHabits((prev) => prev.filter((h) => h.habitId !== habit.habitId));
+      toast.info("Habit removed");
+    } catch (err) {
+      toast.error("Error removing habit");
+    }
   };
 
-  const toggleToday = (habitId: string) => {
-    const key = DATE_KEY();
-    setHabits((prev) =>
-      prev.map((h) => {
-        if (h.id !== habitId) return h;
-
-        const newRecords = { ...h.records, [key]: !h.records[key] };
-        if (!newRecords[key]) delete newRecords[key];
-
-        return { ...h, records: newRecords };
-      })
-    );
+  const toggleComplete = async (habit: Habit & { completed?: boolean }) => {
+    try {
+      await completeHabit({ userId, habitId: habit.habitId });
+      setUserHabits((prev) =>
+        prev.map((h) =>
+          h.habitId === habit.habitId ? { ...h, completed: !h.completed } : h
+        )
+      );
+      toast.success(habit.completed ? "Habit marked as incomplete" : "Habit completed!");
+    } catch (err) {
+      toast.error("Error updating habit");
+    }
   };
 
-  const toggleRecord = (habitId: string, dateKey: string) => {
-    setHabits((prev) =>
-      prev.map((h) =>
-        h.id !== habitId
-          ? h
-          : {
-              ...h,
-              records: { ...h.records, [dateKey]: !h.records[dateKey] },
-            }
-      )
-    );
-  };
+  if (loading) return <p>Loading habits...</p>;
 
-  const week = weekDates();
-
-  // theme-driven styles
-  const isDark = theme === "dark";
-
-  const styles = {
-    pageBg: isDark ? "linear-gradient(180deg,#09110f,#11241e)" : "linear-gradient(180deg,#dff8e3,#bfe7c5)",
-    pageColor: isDark ? "#e6f3ea" : "#123716",
-    card: {
-      background: isDark ? "#0f1b17" : "#ffffff",
-      padding: 18,
-      borderRadius: 14,
-      boxShadow: isDark ? "0 8px 30px rgba(0,0,0,0.6)" : "0 8px 24px rgba(0,0,0,0.12)",
-      color: isDark ? "#e6f3ea" : "#222",
-    } as React.CSSProperties,
-    muted: {
-      color: isDark ? "#b9cbbd" : "#666",
-    } as React.CSSProperties,
-    buttonPrimary: {
-      background: isDark ? "#1e3a31" : "#163b25",
-      color: "white",
-      border: "none",
-      padding: "10px 16px",
-      borderRadius: 10,
-      cursor: "pointer",
-    } as React.CSSProperties,
-    buttonAlt: {
-      background: isDark ? "#33483f" : "#f5f5f5",
-      color: isDark ? "#e6f3ea" : "#123716",
-      border: "1px solid",
-      borderColor: isDark ? "#445c4f" : "#ccc",
-      padding: "8px 12px",
-      borderRadius: 10,
-      cursor: "pointer",
-    } as React.CSSProperties,
-    modalBackdrop: {
-      position: "fixed" as const,
-      inset: 0,
-      background: isDark ? "rgba(0,0,0,0.7)" : "rgba(0,0,0,0.4)",
-      backdropFilter: "blur(4px)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 16,
-      zIndex: 1000,
-    },
-    modalCard: {
-      background: isDark ? "#0b1612" : "#ffffff",
-      color: isDark ? "#e6f3ea" : "#000",
-      padding: 24,
-      borderRadius: 12,
-      maxWidth: 560,
-      width: "100%",
-      boxShadow: isDark ? "0 10px 30px rgba(0,0,0,0.7)" : "0 8px 24px rgba(0,0,0,0.12)",
-    } as React.CSSProperties,
-  };
+  const filteredHabits = selectedCategory ? habitsByCategory[selectedCategory] || [] : habits;
 
   return (
-    <main
+    <div
       style={{
+        padding: "24px",
         minHeight: "100vh",
-        padding: 32,
-        background: styles.pageBg,
-        color: styles.pageColor,
-        fontFamily: "'Lora', serif",
-        boxSizing: "border-box",
+        backgroundColor: theme === "dark" ? "#1a1a1a" : "#f0f0f0",
+        color: theme === "dark" ? "#fff" : "#000",
+        fontFamily: "Arial, sans-serif",
       }}
     >
-      {/* HEADER */}
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
-        <h1 style={{ fontSize: 34, fontWeight: 700, color: styles.pageColor }}>Habit Tracker</h1>
+      <h1 style={{ fontSize: "28px", fontWeight: "bold", marginBottom: "20px" }}>
+        Your Habits
+      </h1>
 
-        <button onClick={() => setShowModal(true)} style={styles.buttonPrimary}>
-          + Add Habit
-        </button>
-      </div>
+      {/* User Habits */}
+      <section style={{ marginBottom: "40px" }}>
+        <h2 style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "12px" }}>
+          Selected Habits
+        </h2>
 
-      {/* NO HABITS */}
-      {habits.length === 0 && (
-        <div style={{ ...styles.card, maxWidth: 700, margin: "0 auto", textAlign: "center" }}>
-          No habits yet — click <b style={{ color: styles.pageColor }}>+ Add Habit</b> to begin.
-        </div>
-      )}
-
-      {/* HABIT LIST */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: habits.length ? 8 : 18 }}>
-        {habits.map((h) => {
-          const doneToday = !!h.records[DATE_KEY()];
-
-          return (
-            <div key={h.id} style={{ width: 340 }}>
-              <div style={styles.card}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: styles.pageColor }}>{h.name}</div>
-                    <div style={{ fontSize: 12, marginTop: 6, ...styles.muted }}>
-                      {h.type === "positive" ? "Positive habit" : "Bad habit"}
-                    </div>
-                  </div>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <button
-                      onClick={() => toggleToday(h.id)}
-                      style={{
-                        background: doneToday ? (isDark ? "#1ca65a" : "#1e8f4b") : styles.buttonPrimary.background,
-                        color: "white",
-                        padding: "6px 12px",
-                        borderRadius: 10,
-                        border: "none",
-                        cursor: "pointer",
-                        minWidth: 86,
-                      }}
-                    >
-                      {doneToday ? "Done ✓" : "Mark"}
-                    </button>
-
-                    <button
-                      onClick={() => deleteHabit(h.id)}
-                      style={{
-                        background: "#c74747",
-                        color: "white",
-                        padding: "6px 12px",
-                        borderRadius: 10,
-                        border: "none",
-                        cursor: "pointer",
-                        minWidth: 86,
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
+        {userHabits.length === 0 ? (
+          <p style={{ color: "#888" }}>No habits added yet.</p>
+        ) : (
+          <ul style={{ listStyle: "none", padding: 0 }}>
+            {userHabits.map((habit) => (
+              <li
+                key={habit.habitId}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "12px",
+                  marginBottom: "10px",
+                  backgroundColor: theme === "dark" ? "#333" : "#fff",
+                  borderRadius: "8px",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                  textDecoration: habit.completed ? "line-through" : "none",
+                  opacity: habit.completed ? 0.6 : 1,
+                }}
+              >
+                <div>
+                  <p style={{ margin: 0, fontWeight: "bold" }}>{habit.habitName}</p>
+                  <p style={{ margin: 0, fontSize: "12px", color: "#666" }}>
+                    {categories.find((c) => c.categoryId === habit.categoryId)?.categoryName}
+                  </p>
                 </div>
 
-                <button
-                  onClick={() => setExpandedId(expandedId === h.id ? null : h.id)}
-                  style={{
-                    marginTop: 10,
-                    width: "100%",
-                    padding: 8,
-                    borderRadius: 10,
-                    border: isDark ? "1px solid #2f4a3f" : "1px solid #ccc",
-                    background: isDark ? "#0c1411" : "#f5f5f5",
-                    cursor: "pointer",
-                    color: isDark ? "#e6f3ea" : "#123716",
-                  }}
-                >
-                  {expandedId === h.id ? "Collapse" : "Expand"}
-                </button>
-              </div>
-
-              {/* EXPANDED SECTION */}
-              {expandedId === h.id && (
-                <div style={{ marginTop: 8, ...styles.card }}>
-                  <div style={{ marginBottom: 10, color: isDark ? "#dbeede" : "#333" }}>
-                    {h.description || "No description"}
-                  </div>
-
-                  <div style={{ display: "flex", gap: 8 }}>
-                    {week.map((d) => {
-                      const key = DATE_KEY(d);
-                      const done = !!h.records[key];
-                      const today = DATE_KEY();
-
-                      const squareBg = done
-                        ? isDark
-                          ? "#1e3a31"
-                          : "#163b25"
-                        : isDark
-                        ? "#183126"
-                        : "#eee";
-
-                      const squareColor = done ? "#fff" : isDark ? "#d6efe1" : "#333";
-
-                      const squareBorder = key === today
-                        ? `2px solid ${isDark ? "#34d08d" : "#1e8f4b"}`
-                        : `1px solid ${isDark ? "#2f4a3f" : "#ccc"}`;
-
-                      return (
-                        <div
-                          key={key}
-                          onClick={() => toggleRecord(h.id, key)}
-                          style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: 8,
-                            background: squareBg,
-                            color: squareColor,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            cursor: "pointer",
-                            border: squareBorder,
-                            boxShadow: done ? (isDark ? "0 6px 12px rgba(0,0,0,0.5)" : "0 6px 12px rgba(0,0,0,0.08)") : undefined,
-                            userSelect: "none",
-                          }}
-                          title={`${d.toLocaleDateString(undefined, { weekday: "short" })} • ${key}`}
-                        >
-                          {d.toLocaleDateString(undefined, { weekday: "narrow" }).slice(0, 1)}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ---------------- MODAL ---------------- */}
-      {showModal && (
-        <div style={styles.modalBackdrop}>
-          <div style={styles.modalCard}>
-            {/* CATEGORY VIEW */}
-            {!selectedCategory && (
-              <>
-                <h2 style={{ marginBottom: 12, color: styles.pageColor }}>Choose a Category</h2>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {Object.keys(HABIT_CATEGORIES).map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => setSelectedCategory(cat)}
-                      style={{
-                        padding: "12px",
-                        borderRadius: 10,
-                        border: isDark ? "1px solid #2f4a3f" : "1px solid #ccc",
-                        background: isDark ? "#0c1411" : "#f7f7f7",
-                        cursor: "pointer",
-                        width: "100%",
-                        color: isDark ? "#e6f3ea" : "#123716",
-                        textAlign: "left",
-                      }}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-
-                <button
-                  onClick={() => setShowModal(false)}
-                  style={{
-                    marginTop: 20,
-                    padding: "10px",
-                    borderRadius: 10,
-                    background: isDark ? "#33483f" : "#999",
-                    color: "white",
-                    border: "none",
-                    width: "100%",
-                    cursor: "pointer",
-                  }}
-                >
-                  Close
-                </button>
-              </>
-            )}
-
-            {/* HABIT SELECTION */}
-            {selectedCategory && (
-              <>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <h2 style={{ color: styles.pageColor }}>{selectedCategory}</h2>
+                <div style={{ display: "flex", gap: "8px" }}>
                   <button
-                    onClick={() => setSelectedCategory(null)}
+                    onClick={() => toggleComplete(habit)}
                     style={{
-                      ...styles.buttonAlt,
-                      padding: "8px 10px",
+                      padding: "6px 12px",
+                      backgroundColor: habit.completed ? "#f39c12" : "#2ecc71",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "6px",
+                      cursor: "pointer",
                     }}
                   >
-                    Back
+                    {habit.completed ? "Undo" : "Complete"}
+                  </button>
+
+                  <button
+                    onClick={() => deleteHabit(habit)}
+                    style={{
+                      padding: "6px 12px",
+                      backgroundColor: "#e74c3c",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Delete
                   </button>
                 </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
-                  {HABIT_CATEGORIES[selectedCategory].map((h) => (
-                    <button
-                      key={h.name}
-                      onClick={() => {
-                        addPredefinedHabit(h);
-                        setShowModal(false);
-                        setSelectedCategory(null);
-                      }}
-                      style={{
-                        padding: 12,
-                        borderRadius: 10,
-                        border: isDark ? "1px solid #2f4a3f" : "1px solid #ccc",
-                        background: isDark ? "#07110d" : "#fff",
-                        cursor: "pointer",
-                        textAlign: "left",
-                        color: isDark ? "#e6f3ea" : "#123716",
-                      }}
-                    >
-                      <div style={{ fontWeight: 700 }}>{h.name}</div>
-                      <div style={{ fontSize: 13, marginTop: 6, color: isDark ? "#bcd6bf" : "#555" }}>
-                        {h.description}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
+      <button
+        onClick={() => setShowModal(true)}
+        style={{
+          padding: "10px 16px",
+          backgroundColor: "#3498db",
+          color: "#fff",
+          border: "none",
+          borderRadius: "6px",
+          cursor: "pointer",
+        }}
+      >
+        Add Habit
+      </button>
+
+      {/* Modal */}
+      {showModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000,
+          }}
+          onClick={() => {
+            setShowModal(false);
+            setSelectedCategory("");
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: theme === "dark" ? "#222" : "#fff",
+              padding: "24px",
+              borderRadius: "12px",
+              width: "90%",
+              maxWidth: "600px",
+              maxHeight: "80%",
+              overflowY: "auto",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ fontSize: "22px", fontWeight: "bold", marginBottom: "16px" }}>
+              Add New Habit
+            </h2>
+
+            <div style={{ marginBottom: "16px" }}>
+              <label style={{ marginRight: "8px", fontWeight: "bold" }}>
+                Filter by category:
+              </label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: "6px",
+                  border: "1px solid #ccc",
+                  cursor: "pointer",
+                }}
+              >
+                <option value="">All</option>
+                {categories.map((category) => (
+                  <option key={category.categoryId} value={category.categoryId}>
+                    {category.categoryName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+              {filteredHabits.map((habit) => (
+                <button
+                  key={habit.habitId}
+                  onClick={() => addHabit(habit)}
+                  style={{
+                    padding: "8px 12px",
+                    border: "1px solid #ccc",
+                    borderRadius: "8px",
+                    backgroundColor: theme === "dark" ? "#333" : "#f9f9f9",
+                    cursor: "pointer",
+                  }}
+                >
+                  {habit.habitName}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => {
+                setShowModal(false);
+                setSelectedCategory("");
+              }}
+              style={{
+                marginTop: "16px",
+                padding: "8px 16px",
+                backgroundColor: "#999",
+                color: "#fff",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+              }}
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }

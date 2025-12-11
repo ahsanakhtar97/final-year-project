@@ -1,5 +1,6 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import  {HabitStatus} from "../enums/habit-status.enum";
+import { UserHabit } from "src/user-habits/entities/user-habit.entity";
 
 @Entity('habit_logs')
 export class HabitLog {
@@ -13,5 +14,8 @@ export class HabitLog {
 
     @Column({name:'status',enum:HabitStatus})
     habitStatus:HabitStatus
-    
+
+    @ManyToOne(()=>UserHabit,(userHabit)=>userHabit.habitLogs,{onDelete:'CASCADE'})
+    @JoinColumn({name:'user_habit_id'})
+    userHabit:UserHabit;
 }
