@@ -5,12 +5,62 @@ import { loginUser } from "../actions/auth";
 import { useRouter } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
 import { toast, ToastContainer } from "react-toastify";
+// UNCOMMENT THIS LINE if 'lucide-react' is installed:
+import { Eye, EyeOff } from 'lucide-react'; 
+
+/*
+  Helper component for password input with a visible toggle icon.
+*/
+const PasswordInput = ({ value, onChange, placeholder, style }: any) => {
+  const [showPass, setShowPass] = useState(false);
+  
+  // Custom wrapper style to allow the icon to overlap the input padding
+  const wrapperStyle: React.CSSProperties = {
+    position: "relative",
+  };
+
+  const inputWithPadding: React.CSSProperties = {
+    ...style,
+    // Add extra padding to the right side of the input to make space for the icon
+    paddingRight: 50,
+    marginBottom: 0, // Reset default margin on the input itself
+  };
+
+  const iconStyle: React.CSSProperties = {
+    position: "absolute",
+    right: 18,
+    top: 15,
+    cursor: "pointer",
+    color: "#60d394", // Accent color for the icon
+    userSelect: "none",
+    padding: 2,
+    lineHeight: 1,
+    zIndex: 10,
+  };
+
+  return (
+    <div style={{...wrapperStyle, marginBottom: style.marginBottom}}>
+      <input
+        type={showPass ? "text" : "password"}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        style={inputWithPadding}
+        required
+      />
+      <span onClick={() => setShowPass(!showPass)} style={iconStyle} title={showPass ? "Hide password" : "Show password"}>
+        {/* CORRECT LUCIDE COMPONENT USAGE */}
+        {showPass ? <EyeOff size={20} /> : <Eye size={20} />}
+      </span>
+    </div>
+  );
+};
+
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPass, setShowPass] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
@@ -32,6 +82,8 @@ export default function LoginPage() {
       toast.success("Login Successful");
       localStorage.setItem("accessToken", user.accessToken);
       router.push("/dashboard");
+    } else {
+        toast.error("Login Failed: Invalid credentials or server error.");
     }
   }
 
@@ -47,7 +99,7 @@ export default function LoginPage() {
       <div style={styles.card}>
         {/* Left Panel */}
         <div style={styles.leftPanel}>
-          <img src="/logo3.png" style={{ width: 150, marginBottom: 16 }} />
+          <img src="/logo3.png" style={{ width: 400, marginBottom: 16 }} alt="GrowFlow Logo" />
           <h2 style={{ color: "#c7ffdc" }}>GrowFlow</h2>
           <p style={{ color: "#9df2c8" }}>Self-development & Mental Health</p>
         </div>
@@ -58,6 +110,7 @@ export default function LoginPage() {
           <p style={styles.subtext}>Log in to continue your journey 🌿</p>
 
           <form onSubmit={handleLogin} style={{ marginTop: 30 }}>
+            {/* Email/Username Input */}
             <input
               type="text"
               placeholder="Email or Username"
@@ -67,18 +120,13 @@ export default function LoginPage() {
               required
             />
 
-            <input
-              type={showPass ? "text" : "password"}
+            {/* Password Input (using new component) */}
+            <PasswordInput
               placeholder="Password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e: any) => setPassword(e.target.value)}
               style={inputStyle}
-              required
             />
-
-            <div onClick={() => setShowPass(!showPass)} style={styles.toggle}>
-              {showPass ? "Hide password" : "Show password"}
-            </div>
 
             <button type="submit" style={styles.button}>
               Log In
@@ -87,30 +135,28 @@ export default function LoginPage() {
             {/* Forgot Password */}
             <p
               style={styles.forgot}
-              onClick={() => alert("Reset feature coming soon!")}
+              onClick={() => toast.info("Reset feature coming soon!")}
             >
               Forgot password?
             </p>
 
-            {/* ⭐ NEW: SIGN UP REDIRECT ⭐ */}
-            {/* ⭐ NEW: SIGN UP REDIRECT ⭐ */}
-<div style={{ marginTop: 25, textAlign: "center" }}>
-  <p style={{ color: "#b4ffe0", fontSize: "0.95rem" }}>
-    Don’t have an account?{" "}
-    <span
-      onClick={() => router.push("/register")}
-      style={{
-        textDecoration: "underline",
-        cursor: "pointer",
-        fontWeight: 600,
-        color: "#d6ffe8",
-      }}
-    >
-      Create one
-    </span>
-  </p>
-</div>
-
+            {/* SIGN UP REDIRECT */}
+            <div style={{ marginTop: 25, textAlign: "center" }}>
+              <p style={{ color: "#b4ffe0", fontSize: "0.95rem" }}>
+                Don’t have an account?{" "}
+                <span
+                  onClick={() => router.push("/register")}
+                  style={{
+                    textDecoration: "underline",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    color: "#d6ffe8",
+                  }}
+                >
+                  Create one
+                </span>
+              </p>
+            </div>
           </form>
         </div>
       </div>
@@ -166,9 +212,10 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
-    alignItems: "center",
+    alignItems: "center", // This centers content horizontally in the left panel
     padding: 40,
     borderRight: "1px solid rgba(255,255,255,0.03)",
+    textAlign: "center" as 'center', // Ensures text/inline elements are centered
   },
   rightPanel: {
     flex: 1,
@@ -183,7 +230,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#9df2c8",
     fontSize: "1.05rem",
   },
-  toggle: {
+  toggle: { // styles.toggle still exists, but is unused in this version
     marginTop: 12,
     color: "#9affd4",
     cursor: "pointer",
@@ -210,25 +257,13 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
     boxShadow: "0px 12px 30px rgba(0,0,0,0.5)",
   },
-
-  /* ⭐ New Create Account Button ⭐ */
-  createBtn: {
-    padding: "12px 20px",
-    background: "rgba(160,255,200,0.2)",
-    borderRadius: 12,
-    color: "#b4ffe0",
-    border: "1px solid rgba(160,255,200,0.3)",
-    cursor: "pointer",
-    fontWeight: 700,
-    fontSize: "1rem",
-    transition: "0.3s ease",
-  },
 };
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "15px 16px",
-  marginBottom: 16,
+  // Increased gap to 24px
+  marginBottom: 24, 
   borderRadius: 14,
   border: "1px solid rgba(160,255,200,0.15)",
   fontSize: "1.05rem",

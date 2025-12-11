@@ -39,12 +39,12 @@ export default function Home() {
         <div className="flex items-center gap-2 justify-start w-full">
           <Image
             src="/logo3.png"
-            width={70}
-            height={70}
+            width={90}
+            height={90}
             alt="GrowFlow"
             className="object-contain"
           />
-          <span className="text-[#c7ffdc] text-2xl font-bold">GrowFlow</span>
+          <span className="text-[#c7ffdc] text-2xl font-bold"></span>
         </div>
 
         {/* Center: Nav Links */}
