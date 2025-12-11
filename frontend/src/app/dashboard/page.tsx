@@ -23,12 +23,13 @@ import { getUserId } from "@/lib/utils";
 import { getTasksByUserId } from "../actions/getUsers";
 import { Task } from "@/types/tasks";
 import { HabitStat, HabitStreak } from "@/types/habits";
-
+// 1. IMPORT useTheme from the layout file
+import { useTheme } from "@/app/dashboard/layout";
 
 
 const MOOD_KEY = "growflow_moods_v1";
-const TASK_KEY = "growflow_tasks_v1";
-const THEME_KEY = "growflow_theme_v1";
+// const TASK_KEY = "growflow_tasks_v1"; // No longer needed
+// const THEME_KEY = "growflow_theme_v1"; // No longer needed
 
 const DATE_KEY = (d = new Date()) => d.toISOString().slice(0, 10);
 
@@ -42,8 +43,11 @@ function buildPastDates(numDays: number, from = new Date()) {
 }
 
 export default function DashboardPage() {
+  // 2. CONSUME THEME STATE & TOGGLE from Context
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === "dark";
 
-  const [bestWorst, setBestWorst] = useState<{ best: HabitStat | null; worst: HabitStat | null }>({
+  const [bestWorstState, setBestWorstState] = useState<{ best: HabitStat | null; worst: HabitStat | null }>({
     best: null,
     worst: null,
   });
@@ -54,67 +58,59 @@ export default function DashboardPage() {
   const [habitStreaks, setHabitStreaks] = useState<HabitStreak[]>([]);
   const [dailyCompleted, setDailyCompleted] = useState<{ date: string; completed: number }[]>([]);
 
+  // Removed local theme state and its loading useEffect:
+  // const [theme, setTheme] = useState<"light" | "dark">(...);
+  // useEffect(() => { /* load persisted theme */ }, []);
 
-
-  const [theme, setTheme] = useState<"light" | "dark">(
-    (typeof window !== "undefined" && (localStorage.getItem(THEME_KEY) as any)) || "light"
-  );
 
   useEffect(() => {
-    // load persisted theme first
-    try {
-      const t = localStorage.getItem(THEME_KEY) as "light" | "dark" | null;
-      if (t) setTheme(t);
-    } catch (e) { }
-    // mount animation
-    requestAnimationFrame(() => setMounted(true));
-  }, []);
-
-  useEffect(() => {
-    // load data
+    // Load local data and API data
     async function fetchData() {
       const userId = getUserId();
       if (userId) {
+        // Load Habits
         const h = await getHabitsByUserId(userId);
-        console.log(h);
         setHabits(h);
+
+        // Load Moods (still uses localStorage)
         const m = localStorage.getItem(MOOD_KEY);
         if (m) setMoods(JSON.parse(m));
 
+        // Load Tasks
         const t = await getTasksByUserId(userId);
-        console.log(t);
         if (t) setTasks(t);
+      } else {
+        toast.error('Token not found');
       }
-      else toast.error('Token not found');
     }
     fetchData();
+    
+    // Mount animation
+    requestAnimationFrame(() => setMounted(true));
   }, []);
-
-
-
 
   // Get best and worst habit of a user
   useEffect(() => {
     const userId = getUserId();
     const days = 30;
     async function fetchBestWorst() {
-
       try {
-
         if (userId) {
           const bw = await getBestWorstHabit(userId, days)
-          console.log(bw);
-          setBestWorst(bw);
+          setBestWorstState(bw);
         }
       } catch (err) {
         toast.error("Failed to fetch best/worst habit");
-        setBestWorst({ best: null, worst: null });
+        setBestWorstState({ best: null, worst: null });
       }
     }
 
     if (userId) fetchBestWorst();
   }, []);
 
+
+  // 3. REMOVED Theme useEffect hook, as it's handled by dashboard/layout.tsx now:
+  /*
   useEffect(() => {
     // apply body background for full-page theme
     if (typeof document !== "undefined") {
@@ -130,6 +126,7 @@ export default function DashboardPage() {
       localStorage.setItem(THEME_KEY, theme);
     } catch (e) { }
   }, [theme]);
+  */
 
 
   // Fetch all the streaks
@@ -150,7 +147,6 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-
     async function fetchData() {
       try {
         const userId = getUserId();
@@ -172,37 +168,23 @@ export default function DashboardPage() {
   // ---------- Derived analytics ----------
 
   // productivity: habits completed today + tasks completed
-  const totalCompleted = 10;
   const completedHabitsToday = habits.filter((h) => h.records?.[today]).length;
   const completedTasksTotal = tasks.filter((t) => t.taskStatus === "completed").length;
   const totalItems = habits.length + tasks.length;
-  const productivityScore = totalItems ? Math.round(((completedHabitsToday + completedTasksTotal) / totalItems) * 100) : 0;
+  const totalCompleted = completedHabitsToday + completedTasksTotal;
+  const productivityScore = totalItems ? Math.round((totalCompleted / totalItems) * 100) : 0;
 
   // last 7 and last 30 days arrays (labels + values)
-  const last7Dates = buildPastDates(7);
-  const last30Dates = buildPastDates(30);
   const dailyLast7 = dailyCompleted.slice(-7).map(d => ({
-  day: d.date.slice(5), // MM-DD
-  completed: d.completed,
-}));
+    day: d.date.slice(5), // MM-DD
+    completed: d.completed,
+  }));
 
-const dailyLast30 = dailyCompleted.map(d => ({
-  day: d.date.slice(5),
-  completed: d.completed,
-}));
+  const dailyLast30 = dailyCompleted.map(d => ({
+    day: d.date.slice(5),
+    completed: d.completed,
+  }));
 
-
-  const last7 = last7Dates.map((d) => {
-    const key = DATE_KEY(d);
-    const completed = habits.filter((h) => h.records?.[key]).length;
-    return { day: key.slice(5), completed };
-  });
-
-  const last30 = last30Dates.map((d) => {
-    const key = DATE_KEY(d);
-    const completed = habits.filter((h) => h.records?.[key]).length;
-    return { day: key.slice(5), completed };
-  });
 
   // task pie breakdown
   const taskCounts = useMemo(() => {
@@ -243,45 +225,27 @@ const dailyLast30 = dailyCompleted.map(d => ({
 
   // weekly / monthly summaries
   const weeklySummary = useMemo(() => {
-    // habits completed in last 7 days (count unique habits completed at least once)
-    const last7Keys = last7Dates.map((d) => DATE_KEY(d));
+    const last7Keys = dailyLast7.map((d) => d.day); // Using available daily data
     const habitsCompletedUnique = habits.filter((h) => last7Keys.some((k) => h.records?.[k])).length;
     const tasksCompletedWeek = tasks.filter((t) => {
       if (!t.completedAt) return false;
       const k = DATE_KEY(new Date(t.completedAt));
-      return last7Keys.includes(k);
+      return dailyLast7.some(d => d.day === k.slice(5));
     }).length;
     return { habitsCompletedUnique, tasksCompletedWeek };
-  }, [habits, tasks]);
+  }, [habits, tasks, dailyLast7]);
 
   const monthlySummary = useMemo(() => {
-    const last30Keys = last30Dates.map((d) => DATE_KEY(d));
+    const last30Keys = dailyLast30.map((d) => d.day); // Using available daily data
     const habitsCompletedUnique = habits.filter((h) => last30Keys.some((k) => h.records?.[k])).length;
     const tasksCompletedMonth = tasks.filter((t) => {
       if (!t.completedAt) return false;
       const k = DATE_KEY(new Date(t.completedAt));
-      return last30Keys.includes(k);
+      return dailyLast30.some(d => d.day === k.slice(5));
     }).length;
     return { habitsCompletedUnique, tasksCompletedMonth };
-  }, [habits, tasks]);
+  }, [habits, tasks, dailyLast30]);
 
-  // habit streak helper
-  function computeStreak(habit: any) {
-    let streak = 0;
-    for (let i = 0; i < 365; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const k = DATE_KEY(d);
-      if (habit.records?.[k]) streak++;
-      else break;
-    }
-    return streak;
-  }
-
-  // toggle theme
-  function toggleTheme() {
-    setTheme((t) => (t === "light" ? "dark" : "light"));
-  }
 
   // small UI styles (inline + CSS block for animations / hover)
   const palette = {
@@ -292,8 +256,6 @@ const dailyLast30 = dailyCompleted.map(d => ({
     darkCard: "#0f241f",
     darkAccent: "#8fe8b2",
   };
-
-  const isDark = theme === "dark";
 
   const pageStyle: React.CSSProperties = {
     padding: 24,
@@ -346,7 +308,7 @@ const dailyLast30 = dailyCompleted.map(d => ({
     justifyContent: "center",
     fontSize: 28,
     fontWeight: 700,
-    color: isDark ? palette.darkAccent : palette.lightCard,
+    color: isDark ? palette.darkAccent : palette.lightAccent, // FIX: Ensure text is visible
     background: isDark ? "rgba(20,70,50,0.06)" : palette.lightCard,
     boxShadow: isDark ? `0 0 30px rgba(174,240,201,0.06)` : `0 6px 20px rgba(22,59,34,0.08)`,
     transition: "box-shadow 300ms ease, transform 200ms ease",
@@ -398,6 +360,8 @@ const dailyLast30 = dailyCompleted.map(d => ({
           <div style={smallMuted}>Overview — {new Date().toLocaleDateString()}</div>
         </div>
 
+        {/* 4. REMOVED THEME TOGGLE BUTTON FROM THE PAGE HEADER */}
+        {/*
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: 12, color: isDark ? "#bfead0" : "#2f6b45" }}>Theme</div>
@@ -417,6 +381,7 @@ const dailyLast30 = dailyCompleted.map(d => ({
             </div>
           </div>
         </div>
+        */}
       </div>
 
       {/* TOP ROW */}
@@ -449,7 +414,7 @@ const dailyLast30 = dailyCompleted.map(d => ({
 
         <div style={{ ...cardBase, width: 240 }} className="fade-up">
           <div style={{ fontSize: 14, fontWeight: 700, color: isDark ? "#cfeed8" : "#2f6b45" }}>Today's Mood</div>
-          <div style={{ fontSize: 44, textAlign: "center", marginTop: 12 }}>{moods[today] || "—"}</div>
+          <div style={{ fontSize: 44, textAlign: "center", marginTop: 12, color: isDark ? palette.darkAccent : palette.lightAccent }}>{moods[today] || "—"}</div>
           <div style={{ fontSize: 12, marginTop: 6, color: isDark ? "#9fdab0" : "#3e6f4a", textAlign: "center" }}>
             Mood recorded: {moods[today] ? "Yes" : "No"}
           </div>
@@ -457,7 +422,7 @@ const dailyLast30 = dailyCompleted.map(d => ({
 
         <div style={{ ...cardBase, width: 260 }} className="fade-up">
           <div style={{ fontSize: 14, fontWeight: 700, color: isDark ? "#cfeed8" : "#2f6b45" }}>Focus</div>
-          <div style={{ fontSize: 36, textAlign: "center", marginTop: 12 }}>{/* dynamic later */} {42}m</div>
+          <div style={{ fontSize: 36, textAlign: "center", marginTop: 12, color: isDark ? palette.darkAccent : palette.lightAccent }}>{/* dynamic later */} {42}m</div>
           <div style={{ fontSize: 12, color: isDark ? "#9fdab0" : "#3e6f4a", marginTop: 8, textAlign: "center" }}>
             Focus minutes today
           </div>
@@ -497,11 +462,11 @@ const dailyLast30 = dailyCompleted.map(d => ({
             <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontSize: 12, color: isDark ? "#bfead0" : "#3e6f4a" }}>Habits touched</div>
-                <div style={{ fontWeight: 700, fontSize: 18 }}>{weeklySummary.habitsCompletedUnique}</div>
+                <div style={{ fontWeight: 700, fontSize: 18, color: isDark ? palette.darkAccent : palette.lightAccent }}>{weeklySummary.habitsCompletedUnique}</div>
               </div>
               <div>
                 <div style={{ fontSize: 12, color: isDark ? "#bfead0" : "#3e6f4a" }}>Tasks done</div>
-                <div style={{ fontWeight: 700, fontSize: 18 }}>{weeklySummary.tasksCompletedWeek}</div>
+                <div style={{ fontWeight: 700, fontSize: 18, color: isDark ? palette.darkAccent : palette.lightAccent }}>{weeklySummary.tasksCompletedWeek}</div>
               </div>
             </div>
           </div>
@@ -511,11 +476,11 @@ const dailyLast30 = dailyCompleted.map(d => ({
             <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontSize: 12, color: isDark ? "#bfead0" : "#3e6f4a" }}>Habits touched</div>
-                <div style={{ fontWeight: 700, fontSize: 18 }}>{monthlySummary.habitsCompletedUnique}</div>
+                <div style={{ fontWeight: 700, fontSize: 18, color: isDark ? palette.darkAccent : palette.lightAccent }}>{monthlySummary.habitsCompletedUnique}</div>
               </div>
               <div>
                 <div style={{ fontSize: 12, color: isDark ? "#bfead0" : "#3e6f4a" }}>Tasks done</div>
-                <div style={{ fontWeight: 700, fontSize: 18 }}>{monthlySummary.tasksCompletedMonth}</div>
+                <div style={{ fontWeight: 700, fontSize: 18, color: isDark ? palette.darkAccent : palette.lightAccent }}>{monthlySummary.tasksCompletedMonth}</div>
               </div>
             </div>
           </div>
@@ -525,11 +490,11 @@ const dailyLast30 = dailyCompleted.map(d => ({
             <div style={{ marginTop: 8 }}>
               <div style={{ fontSize: 13, color: isDark ? "#bfead0" : "#3e6f4a" }}>
                 Best:
-                <span style={{ fontWeight: 700, marginLeft: 8 }}>{bestWorst.best ? `${bestWorst.best.habitName} (${bestWorst.best.percentage * 100}%)` : "—"}</span>
+                <span style={{ fontWeight: 700, marginLeft: 8, color: isDark ? palette.darkAccent : palette.lightAccent }}>{bestWorstState.best ? `${bestWorstState.best.habitName} (${Math.round(bestWorstState.best.percentage * 100)}%)` : "—"}</span>
               </div>
               <div style={{ marginTop: 6, fontSize: 13, color: isDark ? "#bfead0" : "#3e6f4a" }}>
                 Worst:
-                <span style={{ fontWeight: 700, marginLeft: 8 }}>{bestWorst.worst ? `${bestWorst.worst.habitName} (${bestWorst.worst.percentage * 100}%)` : "—"}</span>
+                <span style={{ fontWeight: 700, marginLeft: 8, color: isDark ? palette.darkAccent : palette.lightAccent }}>{bestWorstState.worst ? `${bestWorstState.worst.habitName} (${Math.round(bestWorstState.worst.percentage * 100)}%)` : "—"}</span>
               </div>
             </div>
           </div>
@@ -547,7 +512,7 @@ const dailyLast30 = dailyCompleted.map(d => ({
           <div style={{ display: "flex", gap: 12, marginTop: 12, alignItems: "center" }}>
             <div style={{ width: 280, height: 280 }}>
               <RCPieChart width={280} height={280}>
-                <Pie data={taskPieData} cx={140} cy={140} outerRadius={100} label dataKey="value">
+                <Pie data={taskPieData} cx={140} cy={140} outerRadius={100} label dataKey="value" style={{ fill: isDark ? palette.darkAccent : palette.lightAccent }}>
                   <Cell fill="#8fc48f" />
                   <Cell fill="#4f8b4f" />
                   <Cell fill={greenAccent} />

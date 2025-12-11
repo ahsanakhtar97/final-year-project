@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { HabitLogsService } from './habit-logs.service';
 import { CreateHabitLogDto } from './dto/create-habit-log.dto';
 import { UpdateHabitLogDto } from './dto/update-habit-log.dto';
@@ -10,11 +10,18 @@ export class HabitLogsController {
 
   @Post()
   async create(@Body() createHabitLogDto: CreateHabitLogDto) {
-
+    // Implementation needed here
   }
 
   @Get()
-  findAll(): Promise<HabitLog[]> {
+  // FIX: Accept userId as a query parameter and pass it to the service.
+  // The client sends GET /habit-logs?userId=...
+  findAll(@Query('userId') userId?: number): Promise<HabitLog[]> {
+    if (userId) {
+      // Assuming your service has a method to find logs by user ID
+      return this.habitLogsService.findByUserId(userId);
+    }
+    // Fallback or secure default if no user ID is provided (though usually discouraged)
     return this.habitLogsService.findAll();
   }
 

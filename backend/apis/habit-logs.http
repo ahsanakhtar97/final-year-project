@@ -22,7 +22,7 @@ PATCH {{baseUrl}}/8
 Content-Type: application/json
 
 {
-  "status": "not_completed"
+  "status": "completed"
 }
 
 ### Delete Habit Log

@@ -1,6 +1,7 @@
 import { CreateUserHabitPayload } from "@/types/user-habits";
 import axios from "axios";
 import { getUserHabit } from "./user-habits";
+// Assuming you have getUserId imported somewhere if needed for other file use
 
 const BASE_URL = "/habit-logs";
 
@@ -15,13 +16,27 @@ export const createHabitLog = async (userHabitId: number, date: string, status: 
   }
 };
 
-// ---------------- GET ALL HABIT LOGS ----------------
+// ---------------- GET ALL HABIT LOGS (GENERAL) ----------------
+// Retaining original, though it's likely the source of the 404 if permissions/path are strict.
 export const getAllHabitLogs = async () => {
   try {
     const response = await axios.get(BASE_URL);
     return response.data;
   } catch (error: any) {
     console.error("Error fetching habit logs:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// ---------------- GET HABIT LOGS BY USER ID (New Function) ----------------
+// Assuming the backend endpoint accepts a query parameter like ?userId=
+export const getHabitLogsByUserId = async (userId: number) => {
+  try {
+    // FIX: Using query parameter to filter logs for the specific user
+    const response = await axios.get(`${BASE_URL}?userId=${userId}`);
+    return response.data;
+  } catch (error: any) {
+    console.error("Error fetching habit logs by user ID:", error.response?.data || error.message);
     throw error;
   }
 };
@@ -60,15 +75,15 @@ export const deleteHabitLog = async (logId: number) => {
 };
 
 
-
-export async function completeHabit(data:CreateUserHabitPayload) {
+export async function completeHabit(data: CreateUserHabitPayload) {
   try {
-    const userHabit=await getUserHabit(data.userId,data.habitId);
-    const userHabitId=userHabit.userHabitId;
+    const userHabit = await getUserHabit(data.userId, data.habitId);
+    const userHabitId = userHabit.userHabitId;
     const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
 
-    // Fetch all habit logs for this habit
-    const logs = await getAllHabitLogs();
+    // FIX: Fetch habit logs specifically for the user, not all logs
+    const logs = await getHabitLogsByUserId(data.userId);
+
     const todayLog = logs.find(
       (log: any) => log.userHabitId === userHabitId && log.date === today
     );
@@ -84,5 +99,4 @@ export async function completeHabit(data:CreateUserHabitPayload) {
     console.error("Error completing habit:", error);
     throw error;
   }
-};
-
+}
