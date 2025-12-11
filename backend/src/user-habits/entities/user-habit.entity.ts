@@ -1,7 +1,8 @@
 
+import { HabitLog } from "src/habit-logs/entities/habit-log.entity";
 import { Habit } from "src/habits/entities/habit.entity";
 import { User } from "src/users/entities/user.entity";
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 
 @Entity('user_habits')
@@ -26,4 +27,7 @@ export class UserHabit {
     @ManyToOne(()=>Habit,(habit)=>habit.userHabits,{onDelete:'CASCADE'})
     @JoinColumn({name:'habit_id'})
     habit:Habit;
+
+    @OneToMany(()=>HabitLog,(habitLog)=>habitLog.userHabit)
+    habitLogs:HabitLog[]
 }

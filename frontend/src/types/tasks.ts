@@ -10,6 +10,7 @@ export interface Task {
   title: string;
   description: string;
   taskStatus:TaskStatus;
+  completedAt:Date|null
 };
 
 export interface CreateTaskPayload{

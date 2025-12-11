@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import "./globals.css";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const ThemeContext = createContext({
   theme: "light",
@@ -12,7 +14,7 @@ export function useTheme() {
   return useContext(ThemeContext);
 }
 
-export default function RootLayout({ children }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState("light");
 
   useEffect(() => {
@@ -35,6 +37,20 @@ export default function RootLayout({ children }) {
       <body className={`${theme === "dark" ? "dark" : ""}`}>
         <ThemeContext.Provider value={{ theme, toggleTheme }}>
           {children}
+
+          {/* ToastContainer positioned top-right */}
+          <ToastContainer
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop={true}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme={theme === "dark" ? "dark" : "light"}
+          />
         </ThemeContext.Provider>
       </body>
     </html>

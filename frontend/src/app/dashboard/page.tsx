@@ -1,5 +1,7 @@
 "use client";
 
+import api from "@/lib/axios";
+import { Category } from "@/types/categories";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   LineChart,
@@ -15,16 +17,15 @@ import {
   BarChart,
   Bar,
 } from "recharts";
+import { fetchDailyCompleted, getBestWorstHabit, getHabitsByUserId, getUserStreaks } from "../actions/user-habits";
+import { toast } from "react-toastify";
+import { getUserId } from "@/lib/utils";
+import { getTasksByUserId } from "../actions/getUsers";
+import { Task } from "@/types/tasks";
+import { HabitStat, HabitStreak } from "@/types/habits";
 
-/*
-  Upgraded Dashboard (Premium Green theme, inline styles)
-  - animations, gradients, hover micro-interactions
-  - dark-mode toggle (green dark)
-  - weekly/monthly analytics, best/worst habit, task velocity
-  - retains compatibility with habit data shape used earlier
-*/
 
-const STORAGE_KEY = "growflow_habits_v1";
+
 const MOOD_KEY = "growflow_moods_v1";
 const TASK_KEY = "growflow_tasks_v1";
 const THEME_KEY = "growflow_theme_v1";
@@ -41,12 +42,20 @@ function buildPastDates(numDays: number, from = new Date()) {
 }
 
 export default function DashboardPage() {
+
+  const [bestWorst, setBestWorst] = useState<{ best: HabitStat | null; worst: HabitStat | null }>({
+    best: null,
+    worst: null,
+  });
   const [habits, setHabits] = useState<any[]>([]);
   const [moods, setMoods] = useState<Record<string, string>>({});
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [mounted, setMounted] = useState(false);
+  const [habitStreaks, setHabitStreaks] = useState<HabitStreak[]>([]);
+  const [dailyCompleted, setDailyCompleted] = useState<{ date: string; completed: number }[]>([]);
 
-  // theme: "light" | "dark"
+
+
   const [theme, setTheme] = useState<"light" | "dark">(
     (typeof window !== "undefined" && (localStorage.getItem(THEME_KEY) as any)) || "light"
   );
@@ -56,25 +65,54 @@ export default function DashboardPage() {
     try {
       const t = localStorage.getItem(THEME_KEY) as "light" | "dark" | null;
       if (t) setTheme(t);
-    } catch (e) {}
+    } catch (e) { }
     // mount animation
     requestAnimationFrame(() => setMounted(true));
   }, []);
 
   useEffect(() => {
     // load data
-    try {
-      const h = localStorage.getItem(STORAGE_KEY);
-      if (h) setHabits(JSON.parse(h));
+    async function fetchData() {
+      const userId = getUserId();
+      if (userId) {
+        const h = await getHabitsByUserId(userId);
+        console.log(h);
+        setHabits(h);
+        const m = localStorage.getItem(MOOD_KEY);
+        if (m) setMoods(JSON.parse(m));
 
-      const m = localStorage.getItem(MOOD_KEY);
-      if (m) setMoods(JSON.parse(m));
-
-      const t = localStorage.getItem(TASK_KEY);
-      if (t) setTasks(JSON.parse(t));
-    } catch (e) {
-      console.error("Failed loading local data", e);
+        const t = await getTasksByUserId(userId);
+        console.log(t);
+        if (t) setTasks(t);
+      }
+      else toast.error('Token not found');
     }
+    fetchData();
+  }, []);
+
+
+
+
+  // Get best and worst habit of a user
+  useEffect(() => {
+    const userId = getUserId();
+    const days = 30;
+    async function fetchBestWorst() {
+
+      try {
+
+        if (userId) {
+          const bw = await getBestWorstHabit(userId, days)
+          console.log(bw);
+          setBestWorst(bw);
+        }
+      } catch (err) {
+        toast.error("Failed to fetch best/worst habit");
+        setBestWorst({ best: null, worst: null });
+      }
+    }
+
+    if (userId) fetchBestWorst();
   }, []);
 
   useEffect(() => {
@@ -90,22 +128,69 @@ export default function DashboardPage() {
     }
     try {
       localStorage.setItem(THEME_KEY, theme);
-    } catch (e) {}
+    } catch (e) { }
   }, [theme]);
+
+
+  // Fetch all the streaks
+  useEffect(() => {
+    async function fetchStreaks() {
+      const userId = getUserId();
+      if (!userId) return toast.error("Token not found");
+
+      try {
+        const streaks = await getUserStreaks(userId);
+        setHabitStreaks(streaks);
+      } catch (err) {
+        toast.error("Failed to fetch habit streaks");
+      }
+    }
+
+    fetchStreaks();
+  }, []);
+
+  useEffect(() => {
+
+    async function fetchData() {
+      try {
+        const userId = getUserId();
+        const days = 30; // past 30 days, can adjust
+        if (!userId) return toast.error("Token not found");
+        const data = await fetchDailyCompleted(userId, days);
+        setDailyCompleted(data);
+      } catch (err) {
+        toast.error("Failed to fetch daily completed habits");
+      }
+    }
+    fetchData();
+  }, []);
+
+
 
   const today = DATE_KEY();
 
   // ---------- Derived analytics ----------
 
   // productivity: habits completed today + tasks completed
+  const totalCompleted = 10;
   const completedHabitsToday = habits.filter((h) => h.records?.[today]).length;
-  const completedTasksTotal = tasks.filter((t) => t.status === "completed").length;
+  const completedTasksTotal = tasks.filter((t) => t.taskStatus === "completed").length;
   const totalItems = habits.length + tasks.length;
   const productivityScore = totalItems ? Math.round(((completedHabitsToday + completedTasksTotal) / totalItems) * 100) : 0;
 
   // last 7 and last 30 days arrays (labels + values)
   const last7Dates = buildPastDates(7);
   const last30Dates = buildPastDates(30);
+  const dailyLast7 = dailyCompleted.slice(-7).map(d => ({
+  day: d.date.slice(5), // MM-DD
+  completed: d.completed,
+}));
+
+const dailyLast30 = dailyCompleted.map(d => ({
+  day: d.date.slice(5),
+  completed: d.completed,
+}));
+
 
   const last7 = last7Dates.map((d) => {
     const key = DATE_KEY(d);
@@ -121,9 +206,9 @@ export default function DashboardPage() {
 
   // task pie breakdown
   const taskCounts = useMemo(() => {
-    const todo = tasks.filter((t) => t.status === "todo").length;
-    const inProg = tasks.filter((t) => t.status === "in-progress").length;
-    const done = tasks.filter((t) => t.status === "completed").length;
+    const todo = tasks.filter((t) => t.taskStatus === "to_do").length;
+    const inProg = tasks.filter((t) => t.taskStatus === "in_progress").length;
+    const done = tasks.filter((t) => t.taskStatus === "completed").length;
     return { todo, inProg, done };
   }, [tasks]);
 
@@ -155,21 +240,6 @@ export default function DashboardPage() {
     return weeks;
   }, [tasks]);
 
-  // best / worst habit in last 30 days (by completion percentage)
-  const bestWorst = useMemo(() => {
-    if (!habits.length) return { best: null, worst: null };
-    const scores = habits.map((h) => {
-      const total = last30Dates.length;
-      let done = 0;
-      for (const d of last30Dates) {
-        if (h.records?.[DATE_KEY(d)]) done++;
-      }
-      const pct = total ? Math.round((done / total) * 100) : 0;
-      return { id: h.id, name: h.name, pct, done };
-    });
-    const sorted = [...scores].sort((a, b) => b.pct - a.pct);
-    return { best: sorted[0] || null, worst: sorted[sorted.length - 1] || null };
-  }, [habits]);
 
   // weekly / monthly summaries
   const weeklySummary = useMemo(() => {
@@ -405,7 +475,7 @@ export default function DashboardPage() {
 
           <div style={{ height: 200 }}>
             <ResponsiveContainer>
-              <LineChart data={last7}>
+              <LineChart data={dailyLast7}>
                 <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.03)" : "#e8f3ea"} />
                 <XAxis dataKey="day" stroke={isDark ? "#a7e8c6" : "#2f6b45"} />
                 <YAxis allowDecimals={false} stroke={isDark ? "#9fdab0" : "#2f6b45"} />
@@ -415,6 +485,7 @@ export default function DashboardPage() {
                 />
                 <Line type="monotone" dataKey="completed" stroke={greenAccent} strokeWidth={3} dot={{ r: 4 }} />
               </LineChart>
+
             </ResponsiveContainer>
           </div>
         </div>
@@ -454,11 +525,11 @@ export default function DashboardPage() {
             <div style={{ marginTop: 8 }}>
               <div style={{ fontSize: 13, color: isDark ? "#bfead0" : "#3e6f4a" }}>
                 Best:
-                <span style={{ fontWeight: 700, marginLeft: 8 }}>{bestWorst.best ? `${bestWorst.best.name} (${bestWorst.best.pct}%)` : "—"}</span>
+                <span style={{ fontWeight: 700, marginLeft: 8 }}>{bestWorst.best ? `${bestWorst.best.habitName} (${bestWorst.best.percentage * 100}%)` : "—"}</span>
               </div>
               <div style={{ marginTop: 6, fontSize: 13, color: isDark ? "#bfead0" : "#3e6f4a" }}>
                 Worst:
-                <span style={{ fontWeight: 700, marginLeft: 8 }}>{bestWorst.worst ? `${bestWorst.worst.name} (${bestWorst.worst.pct}%)` : "—"}</span>
+                <span style={{ fontWeight: 700, marginLeft: 8 }}>{bestWorst.worst ? `${bestWorst.worst.habitName} (${bestWorst.worst.percentage * 100}%)` : "—"}</span>
               </div>
             </div>
           </div>
@@ -507,13 +578,23 @@ export default function DashboardPage() {
 
         <div style={{ width: 420 }} className="fade-up">
           <div style={{ ...cardBase, marginBottom: 14 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: greenAccent }}>Habit Streaks (sample)</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: greenAccent }}>Habit Streaks</div>
             <div style={{ marginTop: 10 }}>
-              {habits.length === 0 && <div style={smallMuted}>No habits yet.</div>}
-              {habits.slice(0, 6).map((h, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px dashed ${isDark ? "rgba(255,255,255,0.02)" : "rgba(19,55,22,0.04)"}` }}>
-                  <div style={{ fontWeight: 700, color: isDark ? "#e6ffef" : "#123716" }}>{h.name}</div>
-                  <div style={{ color: isDark ? "#bfead0" : "#3e6f4a" }}>{computeStreak(h)} d</div>
+              {habitStreaks.length === 0 && <div style={smallMuted}>No habits yet.</div>}
+              {habitStreaks.slice(0, 6).map((h, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    padding: "8px 0",
+                    borderBottom: `1px dashed ${isDark ? "rgba(255,255,255,0.02)" : "rgba(19,55,22,0.04)"}`,
+                  }}
+                >
+                  <div style={{ fontWeight: 700, color: isDark ? "#e6ffef" : "#123716" }}>{h.habitName}</div>
+                  <div style={{ color: isDark ? "#bfead0" : "#3e6f4a" }}>
+                    {h.currentStreak} / {h.longestStreak} d
+                  </div>
                 </div>
               ))}
             </div>

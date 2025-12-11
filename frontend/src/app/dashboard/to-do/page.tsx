@@ -1,38 +1,72 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTheme } from "@/app/dashboard/layout";
+import {
+  getTasks,
+  createTask,
+  removeTask,
+  updateTaskStatus,
+} from "../../actions/tasks";
+import { Task, TaskStatus, CreateTaskPayload } from "@/types/tasks";
+import { getTasksByUserId } from "@/app/actions/getUsers";
+import { getUserId } from "@/lib/utils";
 
-interface Task {
-  id: string;
-  title: string;
-  description: string;
+interface Columns {
+  todo: Task[];
+  inProgress: Task[];
+  completed: Task[];
 }
 
 export default function ToDoBoard() {
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
-  const [columns, setColumns] = useState({
-    todo: [
-      { id: "1", title: "Study React", description: "Learn hooks and routing" },
-      { id: "2", title: "Build Kanban UI", description: "Create column layout and styles" },
-    ],
-    inProgress: [
-      { id: "3", title: "Work on Dashboard", description: "Design dashboard cards" },
-    ],
-    completed: [
-      { id: "4", title: "Project Setup Done", description: "Dependencies installed" },
-    ],
+  const [columns, setColumns] = useState<Columns>({
+    todo: [],
+    inProgress: [],
+    completed: [],
   });
 
   const [draggedItem, setDraggedItem] = useState<Task | null>(null);
   const [sourceColumn, setSourceColumn] = useState("");
   const [showModal, setShowModal] = useState(false);
-
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [expandedTask, setExpandedTask] = useState<Task | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [userId,setUserId] = useState<number>(0);
+
+  // Fetch tasks from API on mount
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        setLoading(true);
+        const uid=getUserId();
+        if(uid){
+          setUserId(uid);
+        const tasksFromApi = await getTasksByUserId(uid);
+        const userTasks = tasksFromApi.filter(t => t.userId === uid);
+        setColumns({
+          todo: userTasks.filter(t => t.taskStatus === TaskStatus.TO_DO),
+          inProgress: userTasks.filter(
+            t => t.taskStatus === TaskStatus.IN_PROGRESS
+          ),
+          completed: userTasks.filter(
+            t => t.taskStatus === TaskStatus.COMPLETED
+          ),
+        });
+        setLoading(false);
+      }
+      } catch (err) {
+        console.error(err);
+        setError("Failed to fetch tasks");
+        setLoading(false);
+      }
+    };
+    fetchTasks();
+  }, [userId]);
 
   const boardStyle: React.CSSProperties = {
     minHeight: "100vh",
@@ -53,50 +87,91 @@ export default function ToDoBoard() {
     setSourceColumn(column);
   };
 
-  const handleDrop = (target: keyof typeof columns) => {
-    if (!draggedItem) return;
+  const handleDrop = async (target: keyof Columns) => {
+  if (!draggedItem) return;
 
-    setColumns((prev) => {
+  // Map column key to TaskStatus
+  let status: TaskStatus;
+  switch (target) {
+    case "todo":
+      status = TaskStatus.TO_DO;
+      break;
+    case "inProgress":
+      status = TaskStatus.IN_PROGRESS;
+      break;
+    case "completed":
+      status = TaskStatus.COMPLETED;
+      break;
+  }
+
+  try {
+    await updateTaskStatus(draggedItem.taskId, status);
+
+    setColumns(prev => {
       const updated = { ...prev };
-
-      updated[sourceColumn] = updated[sourceColumn].filter(
-        (t) => t.id !== draggedItem.id
+      updated[sourceColumn as keyof Columns] = updated[sourceColumn as keyof Columns].filter(
+        t => t.taskId !== draggedItem.taskId
       );
-
-      updated[target] = [...updated[target], draggedItem];
-
+      updated[target] = [...updated[target], { ...draggedItem, taskStatus: status }];
       return updated;
     });
 
     setDraggedItem(null);
-  };
+  } catch (err) {
+    console.error(err);
+    setError("Failed to update task status");
+  }
+};
+
 
   const allowDrop = (e: React.DragEvent) => e.preventDefault();
 
-  const addTask = () => {
+  const addTask = async () => {
     if (!newTitle.trim()) return;
 
-    const task: Task = {
-      id: Date.now().toString(),
+    const payload: CreateTaskPayload = {
+      userId,
       title: newTitle,
       description: newDescription,
+      taskStatus: TaskStatus.TO_DO,
     };
 
-    setColumns((prev) => ({
-      ...prev,
-      todo: [...prev.todo, task],
-    }));
+    try {
+      const newTaskId = await createTask(payload);
 
-    setShowModal(false);
-    setNewTitle("");
-    setNewDescription("");
+      setColumns(prev => ({
+        ...prev,
+        todo: [...prev.todo, { ...payload, taskId: Number(newTaskId), completedAt: null }],
+      }));
+
+      setShowModal(false);
+      setNewTitle("");
+      setNewDescription("");
+    } catch (err) {
+      console.error(err);
+      setError("Failed to create task");
+    }
+  };
+
+  const deleteTask = async (taskId: number, columnKey: keyof Columns) => {
+    try {
+      await removeTask(taskId);
+      setColumns(prev => ({
+        ...prev,
+        [columnKey]: prev[columnKey].filter(t => t.taskId !== taskId),
+      }));
+    } catch (err) {
+      console.error(err);
+      setError("Failed to delete task");
+    }
   };
 
   return (
     <main style={boardStyle}>
-      <h1 style={{ fontSize: "34px" }}>To-Do List</h1>
+      <h1 style={{ fontSize: "34px", textAlign: "center" }}>To-Do List</h1>
 
-      {/* Add Task Button */}
+      {error && <p style={{ color: "red", textAlign: "center" }}>{error}</p>}
+
       <div style={{ textAlign: "center", margin: "20px 0" }}>
         <button
           onClick={() => setShowModal(true)}
@@ -113,75 +188,82 @@ export default function ToDoBoard() {
         </button>
       </div>
 
-      {/* Columns */}
-      <div style={{ display: "flex", gap: "24px", justifyContent: "center" }}>
-        {(Object.keys(columns) as (keyof typeof columns)[]).map((columnKey) => (
-          <div
-            key={columnKey}
-            onDrop={() => handleDrop(columnKey)}
-            onDragOver={allowDrop}
-            style={{
-              background: columnBg,
-              borderRadius: "20px",
-              padding: "16px",
-              width: "340px",
-              minHeight: "420px",
-              boxShadow: "0 10px 20px rgba(0,0,0,0.15)",
-            }}
-          >
-            <h2 style={{ textAlign: "center", textTransform: "capitalize" }}>
-              {columnKey === "todo"
-                ? "To Do"
-                : columnKey === "inProgress"
-                ? "In Progress"
-                : "Completed"}
-            </h2>
+      {loading ? (
+        <p style={{ textAlign: "center" }}>Loading tasks...</p>
+      ) : (
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "24px",
+            justifyContent: "center",
+          }}
+        >
+          {(Object.keys(columns) as (keyof Columns)[]).map(columnKey => (
+            <div
+              key={columnKey}
+              onDrop={() => handleDrop(columnKey)}
+              onDragOver={allowDrop}
+              style={{
+                background: columnBg,
+                borderRadius: "20px",
+                padding: "16px",
+                width: "340px",
+                minHeight: "420px",
+                boxShadow: "0 10px 20px rgba(0,0,0,0.15)",
+              }}
+            >
+              <h2 style={{ textAlign: "center", textTransform: "capitalize" }}>
+                {columnKey === "todo"
+                  ? "To Do"
+                  : columnKey === "inProgress"
+                  ? "In Progress"
+                  : "Completed"}
+              </h2>
 
-            {columns[columnKey].map((task) => (
-              <div
-                key={task.id}
-                draggable
-                onDragStart={() => handleDragStart(task, columnKey)}
-                onClick={() => setExpandedTask(task)}
-                style={{
-                  background: cardBg,
-                  padding: "14px",
-                  marginBottom: "12px",
-                  borderRadius: "14px",
-                  cursor: "pointer",
-                  boxShadow: "0 6px 12px rgba(0,0,0,0.1)",
-                  border: `1px solid ${borderColor}`,
-                  position: "relative",
-                }}
-              >
-                {task.title}
-
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setColumns((prev) => ({
-                      ...prev,
-                      [columnKey]: prev[columnKey].filter((t) => t.id !== task.id),
-                    }));
-                  }}
+              {columns[columnKey].map(task => (
+                <div
+                  key={task.taskId}
+                  draggable
+                  onDragStart={() => handleDragStart(task, columnKey)}
+                  onClick={() => setExpandedTask(task)}
                   style={{
-                    position: "absolute",
-                    top: "10px",
-                    right: "10px",
-                    background: "transparent",
-                    border: "none",
-                    color: isDark ? "#ff8a8a" : "red",
+                    background: cardBg,
+                    padding: "14px",
+                    marginBottom: "12px",
+                    borderRadius: "14px",
                     cursor: "pointer",
-                    fontSize: "14px",
+                    boxShadow: "0 6px 12px rgba(0,0,0,0.1)",
+                    border: `1px solid ${borderColor}`,
+                    position: "relative",
                   }}
                 >
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
+                  {task.title}
+
+                  <button
+                    onClick={e => {
+                      e.stopPropagation();
+                      deleteTask(task.taskId, columnKey);
+                    }}
+                    style={{
+                      position: "absolute",
+                      top: "10px",
+                      right: "10px",
+                      background: "transparent",
+                      border: "none",
+                      color: isDark ? "#ff8a8a" : "red",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Add Task Modal */}
       {showModal && (
@@ -204,11 +286,10 @@ export default function ToDoBoard() {
             }}
           >
             <h2>Add New Task</h2>
-
             <input
               placeholder="Title"
               value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
+              onChange={e => setNewTitle(e.target.value)}
               style={{
                 width: "100%",
                 padding: "10px",
@@ -219,11 +300,10 @@ export default function ToDoBoard() {
                 color: "inherit",
               }}
             />
-
             <textarea
               placeholder="Description"
               value={newDescription}
-              onChange={(e) => setNewDescription(e.target.value)}
+              onChange={e => setNewDescription(e.target.value)}
               style={{
                 width: "100%",
                 padding: "10px",
@@ -234,7 +314,6 @@ export default function ToDoBoard() {
                 color: "inherit",
               }}
             />
-
             <div style={{ marginTop: "16px", textAlign: "right" }}>
               <button onClick={() => setShowModal(false)} style={{ marginRight: "10px" }}>
                 Cancel
@@ -271,7 +350,7 @@ export default function ToDoBoard() {
           }}
         >
           <div
-            onClick={(e) => e.stopPropagation()}
+            onClick={e => e.stopPropagation()}
             style={{
               background: cardBg,
               padding: "28px",
