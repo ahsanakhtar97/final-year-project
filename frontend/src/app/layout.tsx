@@ -1,11 +1,16 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import "./globals.css";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const ThemeContext = createContext({
+interface ThemeContextType {
+  theme: "light" | "dark";
+  toggleTheme: () => void;
+}
+
+const ThemeContext = createContext<ThemeContextType>({
   theme: "light",
   toggleTheme: () => {},
 });
@@ -14,15 +19,20 @@ export function useTheme() {
   return useContext(ThemeContext);
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState("light");
+interface RootLayoutProps {
+  children: ReactNode;
+}
+
+export default function RootLayout({ children }: RootLayoutProps) {
+  const [theme, setTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
-    const saved = localStorage.getItem("global_theme");
-    if (saved) {
-      setTheme(saved);
-      document.documentElement.classList.toggle("dark", saved === "dark");
-    }
+    const saved = localStorage.getItem("global_theme") as "light" | "dark" | null;
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+    const initial = saved ?? (prefersDark ? "dark" : "light");
+    setTheme(initial);
+    document.documentElement.classList.toggle("dark", initial === "dark");
   }, []);
 
   const toggleTheme = () => {
@@ -33,17 +43,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   };
 
   return (
-    <html lang="en">
-      <body className={`${theme === "dark" ? "dark" : ""}`}>
-        <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+      <html lang="en">
+        <body>
           {children}
-
-          {/* ToastContainer positioned top-right */}
           <ToastContainer
             position="top-right"
             autoClose={3000}
             hideProgressBar={false}
-            newestOnTop={true}
+            newestOnTop
             closeOnClick
             rtl={false}
             pauseOnFocusLoss
@@ -51,8 +59,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             pauseOnHover
             theme={theme === "dark" ? "dark" : "light"}
           />
-        </ThemeContext.Provider>
-      </body>
-    </html>
+        </body>
+      </html>
+    </ThemeContext.Provider>
   );
 }

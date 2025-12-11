@@ -36,29 +36,29 @@ export default function ToDoBoard() {
   const [expandedTask, setExpandedTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [userId,setUserId] = useState<number>(0);
+  const [userId, setUserId] = useState<number>(0);
 
   // Fetch tasks from API on mount
   useEffect(() => {
     const fetchTasks = async () => {
       try {
         setLoading(true);
-        const uid=getUserId();
-        if(uid){
+        const uid = getUserId();
+        if (uid) {
           setUserId(uid);
-        const tasksFromApi = await getTasksByUserId(uid);
-        const userTasks = tasksFromApi.filter(t => t.userId === uid);
-        setColumns({
-          todo: userTasks.filter(t => t.taskStatus === TaskStatus.TO_DO),
-          inProgress: userTasks.filter(
-            t => t.taskStatus === TaskStatus.IN_PROGRESS
-          ),
-          completed: userTasks.filter(
-            t => t.taskStatus === TaskStatus.COMPLETED
-          ),
-        });
+          const tasksFromApi = await getTasksByUserId(uid);
+          const userTasks = tasksFromApi.filter(t => t.userId === uid);
+          setColumns({
+            todo: userTasks.filter(t => t.taskStatus === TaskStatus.TO_DO),
+            inProgress: userTasks.filter(
+              t => t.taskStatus === TaskStatus.IN_PROGRESS
+            ),
+            completed: userTasks.filter(
+              t => t.taskStatus === TaskStatus.COMPLETED
+            ),
+          });
+        }
         setLoading(false);
-      }
       } catch (err) {
         console.error(err);
         setError("Failed to fetch tasks");
@@ -88,41 +88,39 @@ export default function ToDoBoard() {
   };
 
   const handleDrop = async (target: keyof Columns) => {
-  if (!draggedItem) return;
+    if (!draggedItem) return;
 
-  // Map column key to TaskStatus
-  let status: TaskStatus;
-  switch (target) {
-    case "todo":
-      status = TaskStatus.TO_DO;
-      break;
-    case "inProgress":
-      status = TaskStatus.IN_PROGRESS;
-      break;
-    case "completed":
-      status = TaskStatus.COMPLETED;
-      break;
-  }
+    let status: TaskStatus;
+    switch (target) {
+      case "todo":
+        status = TaskStatus.TO_DO;
+        break;
+      case "inProgress":
+        status = TaskStatus.IN_PROGRESS;
+        break;
+      case "completed":
+        status = TaskStatus.COMPLETED;
+        break;
+    }
 
-  try {
-    await updateTaskStatus(draggedItem.taskId, status);
+    try {
+      await updateTaskStatus(draggedItem.taskId, status);
 
-    setColumns(prev => {
-      const updated = { ...prev };
-      updated[sourceColumn as keyof Columns] = updated[sourceColumn as keyof Columns].filter(
-        t => t.taskId !== draggedItem.taskId
-      );
-      updated[target] = [...updated[target], { ...draggedItem, taskStatus: status }];
-      return updated;
-    });
+      setColumns(prev => {
+        const updated = { ...prev };
+        updated[sourceColumn as keyof Columns] = updated[
+          sourceColumn as keyof Columns
+        ].filter(t => t.taskId !== draggedItem.taskId);
+        updated[target] = [...updated[target], { ...draggedItem, taskStatus: status }];
+        return updated;
+      });
 
-    setDraggedItem(null);
-  } catch (err) {
-    console.error(err);
-    setError("Failed to update task status");
-  }
-};
-
+      setDraggedItem(null);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to update task status");
+    }
+  };
 
   const allowDrop = (e: React.DragEvent) => e.preventDefault();
 
@@ -138,10 +136,15 @@ export default function ToDoBoard() {
 
     try {
       const newTaskId = await createTask(payload);
+      const id = Number(newTaskId);
+
+      if (isNaN(id)) {
+        throw new Error("Invalid taskId returned from backend");
+      }
 
       setColumns(prev => ({
         ...prev,
-        todo: [...prev.todo, { ...payload, taskId: Number(newTaskId), completedAt: null }],
+        todo: [...prev.todo, { ...payload, taskId: id, completedAt: null }],
       }));
 
       setShowModal(false);
