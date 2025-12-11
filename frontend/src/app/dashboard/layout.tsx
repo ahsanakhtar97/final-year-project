@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 import Sidebar from "@/app/components/sidebar";
 
 const ThemeContext = createContext<any>(null);
@@ -12,6 +12,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   function toggleTheme() {
     setTheme(prev => (prev === "light" ? "dark" : "light"));
   }
+
+  // ⭐ VERY IMPORTANT — apply dark mode class to <html> for Tailwind
+  useEffect(() => {
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [theme]);
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>

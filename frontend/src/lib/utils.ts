@@ -1,5 +1,6 @@
 import { jwtDecode } from "jwt-decode";
-
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
 export function getUserId(): number | null {
   if (typeof window === "undefined") return null;
 
@@ -12,4 +13,7 @@ export function getUserId(): number | null {
   } catch {
     return null;
   }
+}
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
 }

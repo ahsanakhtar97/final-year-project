@@ -167,7 +167,7 @@ export default function AboutPage() {
             }}
           >
             <Image
-              src="/hassan.png"
+              src="/hassan1.jpeg"
               alt="Hassan Murad"
               width={240}
               height={240}
