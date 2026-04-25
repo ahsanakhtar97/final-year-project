@@ -15,6 +15,7 @@ import { UserHabitsModule } from './user-habits/user-habits.module';
 import { HabitLogsModule } from './habit-logs/habit-logs.module';
 import { AiModule } from './ai/ai.module';
 import { JournalModule } from './journal/journal.module';
+import { GoalsModule } from './goals/goals.module';
 import { DashboardController } from './dashboard.controller';
 import { validateEnv } from './common/env.validation';
 
@@ -47,6 +48,7 @@ import { validateEnv } from './common/env.validation';
     HabitLogsModule,
     AiModule,
     JournalModule,
+    GoalsModule,
   ],
   controllers: [AppController, DashboardController],
   providers: [

@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Sidebar from "@/app/components/sidebar";
+import CommandPalette from "@/app/components/command-palette";
+import Onboarding from "@/app/components/onboarding";
 import { useRouter } from "next/navigation";
 import { Menu } from "lucide-react";
 import { clearAuth, isJwtExpired } from "@/lib/auth";
@@ -102,6 +104,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         }}
       >
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <CommandPalette />
+        <Onboarding />
 
         <div className="flex flex-1 flex-col min-w-0">
           {/* Mobile topbar */}

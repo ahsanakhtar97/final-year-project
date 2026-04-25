@@ -18,6 +18,9 @@ import {
   Timer,
   Trophy,
   TrendingUp,
+  Target,
+  Calendar,
+  Settings,
 } from "lucide-react";
 import { useTheme } from "@/app/dashboard/theme-context";
 
@@ -31,11 +34,15 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/to-do", label: "To Do List", icon: CheckSquare },
   { href: "/dashboard/habit-tracker", label: "Habit Tracker", icon: Heart },
+  { href: "/dashboard/goals", label: "Goals", icon: Target },
   { href: "/dashboard/journal", label: "Growth Journal", icon: BookOpen },
   { href: "/dashboard/focus", label: "Focus Timer", icon: Timer },
+  { href: "/dashboard/calendar", label: "Calendar", icon: Calendar },
+  { href: "/dashboard/coach", label: "Coach", icon: Sparkles },
   { href: "/dashboard/insights", label: "Insights", icon: TrendingUp },
   { href: "/dashboard/achievements", label: "Achievements", icon: Trophy },
   { href: "/dashboard/profile", label: "Profile", icon: User },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
 interface SidebarProps {

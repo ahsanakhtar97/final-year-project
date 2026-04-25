@@ -1,5 +1,7 @@
 "use client";
 
+import DailyCheckIn from "@/app/components/daily-check-in";
+
 import api from "@/lib/axios";
 import React, { useEffect, useMemo, useState } from "react";
 import CorrelationChart from "../components/charts/CorrelationChart";
@@ -283,6 +285,10 @@ export default function DashboardPage() {
           <span className="h-2 w-2 rounded-full bg-current" />
           Live
         </span>
+      </div>
+
+      <div className="mb-6">
+        <DailyCheckIn />
       </div>
 
       <div

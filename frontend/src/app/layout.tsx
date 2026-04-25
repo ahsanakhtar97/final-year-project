@@ -32,6 +32,10 @@ export default function RootLayout({ children }: RootLayoutProps) {
         />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="theme-color" content="#108a54" />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="apple-touch-icon" href="/grow-flow-logo.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="GrowFlow" />
       </head>
       <body className="gf-scroll">
         {children}

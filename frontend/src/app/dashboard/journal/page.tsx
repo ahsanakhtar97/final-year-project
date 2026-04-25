@@ -21,6 +21,8 @@ import {
   getJournalEntriesByUser,
 } from "@/app/actions/journal";
 import { JournalEntry } from "@/types/journal";
+import JournalPrompts from "@/app/components/journal-prompts";
+import { Lightbulb } from "lucide-react";
 
 // Words longer than this in the textarea are flagged as "you might be venting"
 // -- purely cosmetic; the analyzer still runs.
@@ -64,6 +66,7 @@ export default function JournalPage() {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [userId, setUserId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
+  const [promptsOpen, setPromptsOpen] = useState(false);
 
   useEffect(() => {
     const uid = getUserId();
@@ -232,6 +235,13 @@ export default function JournalPage() {
             <Sparkles size={12} />
             New entry
           </span>
+          <button
+            type="button"
+            className="gf-btn gf-btn-ghost text-xs"
+            onClick={() => setPromptsOpen(true)}
+          >
+            <Lightbulb size={12} /> Prompts
+          </button>
           <span className="gf-muted text-xs">
             {wordCount} word{wordCount === 1 ? "" : "s"}
             {wordCount > 0 && wordCount < STREAK_GOAL_WORDS && (
@@ -412,6 +422,12 @@ export default function JournalPage() {
           </ul>
         )}
       </div>
-    </div>
+    
+      <JournalPrompts
+        open={promptsOpen}
+        onClose={() => setPromptsOpen(false)}
+        onPick={(p) => setEntry((cur) => (cur ? cur + "\n\n" + p : p))}
+      />
+</div>
   );
 }

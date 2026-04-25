@@ -1,0 +1,42 @@
+{
+  "name": "GrowFlow",
+  "short_name": "GrowFlow",
+  "description": "Personal growth tracker -- habits, goals, focus, journal.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#eafff0",
+  "theme_color": "#163b25",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/grow-flow-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/grow-flow-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Focus timer",
+      "short_name": "Focus",
+      "url": "/dashboard/focus"
+    },
+    {
+      "name": "Daily journal",
+      "short_name": "Journal",
+      "url": "/dashboard/journal"
+    },
+    {
+      "name": "Habit tracker",
+      "short_name": "Habits",
+      "url": "/dashboard/habit-tracker"
+    }
+  ]
+}
