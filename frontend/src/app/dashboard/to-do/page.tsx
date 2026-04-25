@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useTheme } from "@/app/dashboard/layout";
+import { useTheme } from "@/app/dashboard/theme-context";
 import {
-  getTasks,
   createTask,
   removeTask,
   updateTaskStatus,
@@ -11,7 +10,7 @@ import {
 import { Task, TaskStatus, CreateTaskPayload } from "@/types/tasks";
 import { getTasksByUserId } from "@/app/actions/getUsers";
 import { getUserId } from "@/lib/utils";
-
+import confetti from 'canvas-confetti';
 interface Columns {
   todo: Task[];
   inProgress: Task[];
@@ -23,30 +22,31 @@ const PALETTE = {
   // Main Theme Colors
   lightBg: "linear-gradient(180deg, #dff8e3, #bfe7c5)",
   darkBg: "linear-gradient(180deg, #0f1f17, #1b2f24)",
-  
+
   // Card/Column Colors
-  lightColumn: "#f0f8f0", // Slightly off-white for column area
-  darkColumn: "#1f2f27",  // Darker green for column area
+  lightColumn: "#f0f8f0",
+  darkColumn: "#1f2f27",
   lightCard: "#ffffff",
   darkCard: "#243b30",
-  
+
   // Text & Accents
   lightText: "#123716",
   darkText: "#e5f5ec",
-  lightAccent: "#163b25", // Dark green button/accent color
-  darkAccent: "#60d394",  // Bright green text/accent color
+  lightAccent: "#163b25",
+  darkAccent: "#60d394",
   lightBorder: "#e5e5e5",
   darkBorder: "#355a4a",
-  
+
   // Action Colors
-  complete: "#2ecc71", // Green/Success
-  remove: "#e74c3c",   // Red/Danger
+  complete: "#2ecc71",
+  remove: "#e74c3c",
   modalBg: "rgba(0,0,0,0.6)",
 };
 
 export default function ToDoBoard() {
   const { theme } = useTheme();
   const isDark = theme === "dark";
+  const [isPrivate, setIsPrivate] = useState(false);
 
   const [columns, setColumns] = useState<Columns>({
     todo: [],
@@ -81,14 +81,14 @@ export default function ToDoBoard() {
         if (uid) {
           setUserId(uid);
           const tasksFromApi = await getTasksByUserId(uid);
-          const userTasks = tasksFromApi.filter(t => t.userId === uid);
+          const userTasks = tasksFromApi.filter((t: Task) => t.userId === uid);
           setColumns({
-            todo: userTasks.filter(t => t.taskStatus === TaskStatus.TO_DO),
+            todo: userTasks.filter((t: Task) => t.taskStatus === TaskStatus.TO_DO),
             inProgress: userTasks.filter(
-              t => t.taskStatus === TaskStatus.IN_PROGRESS
+              (t: Task) => t.taskStatus === TaskStatus.IN_PROGRESS
             ),
             completed: userTasks.filter(
-              t => t.taskStatus === TaskStatus.COMPLETED
+              (t: Task) => t.taskStatus === TaskStatus.COMPLETED
             ),
           });
         }
@@ -103,13 +103,11 @@ export default function ToDoBoard() {
   }, [userId]);
 
   const boardStyle: React.CSSProperties = {
-    minHeight: "100vh",
-    padding: "30px",
-    background: isDark ? PALETTE.darkBg : PALETTE.lightBg,
     color: isDark ? PALETTE.darkText : PALETTE.lightText,
-    transition: "all 0.3s ease",
+    transition: "color 0.3s ease",
     display: 'flex',
     flexDirection: 'column',
+    width: '100%',
   };
 
   const handleDragStart = (task: Task, column: string) => {
@@ -134,31 +132,32 @@ export default function ToDoBoard() {
       default:
         return;
     }
-
-    // --- OPTIMISTIC UI: Step 1: Save current state and update UI instantly ---
+    if (target === 'completed') {
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#60d394', '#163b25', '#ffffff']
+      });
+    }
     const oldColumns = columns;
     const taskToMove = { ...draggedItem, taskStatus: status };
 
     setColumns(prev => {
       const updated = { ...prev };
-      // Remove from source column
       updated[sourceColumn as keyof Columns] = updated[sourceColumn as keyof Columns].filter(
         t => t.taskId !== draggedItem.taskId
       );
-      // Add to target column
       updated[target] = [...updated[target], taskToMove];
       return updated;
     });
 
     setDraggedItem(null);
-    // --- OPTIMISTIC UI: Step 2: Call API and handle errors/revert ---
     try {
       await updateTaskStatus(draggedItem.taskId, status);
-
     } catch (err) {
       console.error(err);
       setError("Failed to update task status. Reverting change.");
-      // Revert state on failure
       setColumns(oldColumns);
     }
   };
@@ -167,8 +166,7 @@ export default function ToDoBoard() {
 
   const addTask = async () => {
     if (!newTitle.trim()) return;
-    
-    // Create a temporary ID for the optimistic update. Use a negative number.
+
     const tempId = Date.now() * -1;
     const payload: CreateTaskPayload = {
       userId,
@@ -177,12 +175,11 @@ export default function ToDoBoard() {
       taskStatus: TaskStatus.TO_DO,
     };
     const optimisticTask: Task & { completedAt: string | null } = {
-        ...payload,
-        taskId: tempId,
-        completedAt: null,
+      ...payload,
+      taskId: tempId,
+      completedAt: null,
     };
 
-    // --- OPTIMISTIC UI: Step 1: Update UI instantly ---
     setColumns(prev => ({
       ...prev,
       todo: [...prev.todo, optimisticTask],
@@ -191,25 +188,23 @@ export default function ToDoBoard() {
     setNewTitle("");
     setNewDescription("");
 
-    // --- OPTIMISTIC UI: Step 2: Call API and handle errors/revert/final update ---
     try {
-      const newTaskId = await createTask(payload);
-      const id = Number(newTaskId);
+      const createdTask = await createTask(payload);
+      const realId = createdTask?.taskId ?? (createdTask as unknown as { id?: number | string } | null)?.id;
 
-      if (isNaN(id)) {
+      if (!realId) {
         throw new Error("Invalid taskId returned from backend");
       }
-      
-      // If successful, update the temporary task with the real ID
+
       setColumns(prev => ({
         ...prev,
-        todo: prev.todo.map(t => t.taskId === tempId ? { ...optimisticTask, taskId: id } : t)
+        todo: prev.todo.map(t =>
+          t.taskId === tempId ? { ...createdTask, taskId: realId as number } : t
+        )
       }));
-
     } catch (err) {
       console.error(err);
       setError("Failed to create task. Reverting change.");
-      // Revert state on failure: remove the temporary task
       setColumns(prev => ({
         ...prev,
         todo: prev.todo.filter(t => t.taskId !== tempId)
@@ -218,7 +213,6 @@ export default function ToDoBoard() {
   };
 
   const deleteTask = async (taskId: number, columnKey: keyof Columns) => {
-    // --- OPTIMISTIC UI: Step 1: Save current state and update UI instantly ---
     const oldColumns = columns;
     const taskToDelete = columns[columnKey].find(t => t.taskId === taskId);
 
@@ -227,26 +221,21 @@ export default function ToDoBoard() {
       [columnKey]: prev[columnKey].filter(t => t.taskId !== taskId),
     }));
 
-    // --- OPTIMISTIC UI: Step 2: Call API and handle errors/revert ---
     try {
       await removeTask(taskId);
     } catch (err) {
       console.error(err);
       setError("Failed to delete task. Reverting change.");
-      // Revert state on failure: restore the deleted task
       if (taskToDelete) {
         setColumns(prev => ({
           ...prev,
           [columnKey]: [...prev[columnKey], taskToDelete]
         }));
       } else {
-        // If we can't find it locally, just revert to the old saved state
-        setColumns(oldColumns); 
+        setColumns(oldColumns);
       }
     }
   };
-  
-  // --- Reusable JSX components for cleaner rendering ---
 
   const ColumnHeader = ({ title }: { title: string }) => (
     <h2
@@ -261,7 +250,7 @@ export default function ToDoBoard() {
       {title}
     </h2>
   );
-  
+
   const TaskCard = ({ task, columnKey }: { task: Task, columnKey: keyof Columns }) => (
     <div
       key={task.taskId}
@@ -277,10 +266,15 @@ export default function ToDoBoard() {
         boxShadow: "0 6px 12px rgba(0,0,0,0.1)",
         border: `1px solid ${borderColor}`,
         position: "relative",
-        opacity: task.taskId < 0 ? 0.7 : 1, // Visual hint for optimistic tasks
+        opacity: task.taskId < 0 ? 0.7 : 1,
       }}
     >
-      <div style={{ fontWeight: 600, fontSize: "1.1rem" }}>{task.title}</div>
+      <div style={{
+        fontWeight: 600,
+        fontSize: "1.1rem",
+        filter: isPrivate ? "blur(8px)" : "none",
+        transition: "filter 0.3s ease",
+      }}>{task.title}</div>
       <button
         onClick={e => {
           e.stopPropagation();
@@ -304,36 +298,186 @@ export default function ToDoBoard() {
     </div>
   );
 
+  // --- Quick Stats Logic ---
+  const totalTasks = columns.todo.length + columns.inProgress.length + columns.completed.length;
+  const completionRate = totalTasks > 0
+    ? Math.round((columns.completed.length / totalTasks) * 100)
+    : 0;
+
+  const totalXP = (columns.completed.length * 10);
+  const currentLevel = Math.floor(totalXP / 50) + 1;
+  const levelName = currentLevel > 3 ? "Sapling" : "Seedling";
+
+  const computeStreak = (): number => {
+    const days = new Set(
+      columns.completed
+        .map((t) => t.completedAt as Date | string | null | undefined)
+        .filter((d): d is Date | string => Boolean(d))
+        .map((d) => new Date(d as Date | string).toISOString().slice(0, 10)),
+    );
+    if (days.size === 0) return 0;
+    let streak = 0;
+    const cursor = new Date();
+    for (let i = 0; i < 365; i++) {
+      const key = cursor.toISOString().slice(0, 10);
+      if (days.has(key)) streak += 1;
+      else if (i > 0) break;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return streak;
+  };
+  const streakDays = computeStreak();
+
+  const getWeeklyInsight = () => {
+    const allCompletedTasks = columns.completed;
+    const currentMood = allCompletedTasks.length > 0 ? 8 : 5;
+
+    if (totalTasks === 0) return "اپنے دن کا آغاز کرنے کے لیے پہلا کام شامل کریں!";
+    if (completionRate > 70 && currentMood > 7) {
+      return "آپ کی کارکردگی بہترین ہے! اپنی ذہنی صحت اور کام میں توازن برقرار رکھیں۔ 🚀";
+    } else if (completionRate > 70 && currentMood < 4) {
+      return "انتباہ: آپ بہت زیادہ کام کر رہے ہیں۔ تھوڑا آرام کریں تاکہ برن آؤٹ سے بچ سکیں۔ ⚠️";
+    } else if (completionRate < 30 && currentMood < 4) {
+      return "آج خود پر نرمی برتیں۔ چھوٹے اور آسان کاموں سے آغاز کریں تاکہ آپ بہتر محسوس کر سکیں۔ ✨";
+    } else {
+      return "آج کا دن خود کی بہتری کے لیے اچھا ہے۔ آپ کے اہداف آپ کے منتظر ہیں!";
+    }
+  };
 
   return (
     <main style={boardStyle}>
-      {/* --- Main Header (Title and Add Button) --- */}
-      <div 
-        style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          marginBottom: '30px' 
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '30px'
         }}
       >
         <h1 style={{ fontSize: "2.5rem", color: primaryAccent, margin: 0 }}>To-Do List</h1>
-        <button
-          onClick={() => setShowModal(true)}
-          style={{
-            background: primaryButtonBg,
-            color: isDark ? PALETTE.lightText : PALETTE.darkText,
-            padding: "12px 20px",
-            borderRadius: "12px",
-            border: "none",
-            cursor: "pointer",
-            fontWeight: 700,
-            fontSize: '1rem',
-            boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-            transition: 'background 0.3s ease',
-          }}
-        >
-          + Add Task
-        </button>
+
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={() => setIsPrivate(!isPrivate)}
+            style={{
+              background: isPrivate ? PALETTE.remove : 'transparent',
+              border: `1px solid ${primaryAccent}`,
+              color: isPrivate ? '#fff' : primaryAccent,
+              padding: "10px 18px",
+              borderRadius: "12px",
+              cursor: "pointer",
+              fontWeight: 700,
+              transition: "all 0.3s ease",
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            {isPrivate ? "🔒 Public View" : "👁️ Privacy Mode"}
+          </button>
+
+          <button
+            onClick={() => setShowModal(true)}
+            style={{
+              background: primaryButtonBg,
+              color: isDark ? PALETTE.lightText : PALETTE.darkText,
+              padding: "10px 20px",
+              borderRadius: "12px",
+              border: "none",
+              cursor: "pointer",
+              fontWeight: 700,
+              fontSize: '1rem',
+              boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+              transition: 'background 0.3s ease',
+            }}
+          >
+            + Add Task
+          </button>
+        </div>
+      </div>
+
+      <div style={{
+        display: 'flex',
+        gap: '15px',
+        marginBottom: '20px',
+        flexWrap: 'wrap'
+      }}>
+        <div style={{
+          background: isDark ? 'rgba(96, 211, 148, 0.1)' : '#fff',
+          border: `1px solid ${primaryAccent}`,
+          padding: '8px 16px',
+          borderRadius: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <span style={{ fontSize: '18px' }}>🌳</span>
+          <span style={{ fontWeight: 'bold', fontSize: '14px' }}>
+            Level {currentLevel}: {levelName}
+          </span>
+        </div>
+
+        <div style={{
+          background: isDark ? 'rgba(96, 211, 148, 0.1)' : '#fff',
+          border: `1px solid ${primaryAccent}`,
+          padding: '8px 16px',
+          borderRadius: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <span style={{ fontSize: '18px' }}>📈</span>
+          <span style={{ fontWeight: 'bold', fontSize: '14px' }}>
+            {completionRate}% Done
+          </span>
+        </div>
+
+        <div style={{
+          background: isDark ? 'rgba(96, 211, 148, 0.1)' : '#fff',
+          border: `1px solid ${primaryAccent}`,
+          padding: '8px 16px',
+          borderRadius: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <span style={{ fontSize: '18px' }}>🔥</span>
+          <span style={{ fontWeight: 'bold', fontSize: '14px' }}>
+            {streakDays} Day Streak
+          </span>
+        </div>
+      </div>
+
+      <div style={{
+        background: isDark ? 'rgba(255, 255, 255, 0.03)' : '#f0fdf4',
+        padding: '18px',
+        borderRadius: '16px',
+        borderLeft: `6px solid ${primaryAccent}`,
+        marginBottom: '30px',
+        boxShadow: isDark ? 'none' : '0 4px 6px rgba(0,0,0,0.05)',
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          marginBottom: '8px',
+          opacity: 0.7,
+          fontSize: '12px',
+          fontWeight: 'bold',
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px'
+        }}>
+          <span>🧠</span> GrowFlow AI Insight
+        </div>
+        <p style={{
+          margin: 0,
+          fontWeight: '600',
+          fontSize: '1.1rem',
+          lineHeight: '1.6',
+          color: isDark ? '#e5f5ec' : '#123716'
+        }}>
+          {getWeeklyInsight()}
+        </p>
       </div>
 
       {error && <p style={{ color: PALETTE.remove, textAlign: "center", marginBottom: '20px' }}>{error}</p>}
@@ -341,11 +485,10 @@ export default function ToDoBoard() {
       {loading ? (
         <p style={{ textAlign: "center", marginTop: '50px' }}>Loading tasks...</p>
       ) : (
-        // --- Kanban Board Columns ---
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', // Responsive grid layout
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
             gap: "24px",
             alignItems: 'flex-start',
             flexGrow: 1,
@@ -365,22 +508,22 @@ export default function ToDoBoard() {
                 border: `1px solid ${borderColor}`,
               }}
             >
-              <ColumnHeader 
+              <ColumnHeader
                 title={
                   columnKey === "todo"
                     ? "To Do"
                     : columnKey === "inProgress"
                     ? "In Progress"
                     : "Completed"
-                } 
+                }
               />
 
               {columns[columnKey].length === 0 && (
-                  <p style={{ textAlign: 'center', color: isDark ? '#aaa' : '#666', marginTop: '10px' }}>
-                      Drag tasks here or add a new one.
-                  </p>
+                <p style={{ textAlign: 'center', color: isDark ? '#aaa' : '#666', marginTop: '10px' }}>
+                  Drag tasks here or add a new one.
+                </p>
               )}
-              
+
               {columns[columnKey].map(task => (
                 <TaskCard key={task.taskId} task={task} columnKey={columnKey} />
               ))}
@@ -389,7 +532,6 @@ export default function ToDoBoard() {
         </div>
       )}
 
-      {/* Add Task Modal */}
       {showModal && (
         <div
           style={{
@@ -446,11 +588,11 @@ export default function ToDoBoard() {
               }}
             />
             <div style={{ marginTop: "20px", textAlign: "right" }}>
-              <button 
-                onClick={() => setShowModal(false)} 
-                style={{ 
-                  marginRight: "10px", 
-                  padding: "10px 18px", 
+              <button
+                onClick={() => setShowModal(false)}
+                style={{
+                  marginRight: "10px",
+                  padding: "10px 18px",
                   borderRadius: "10px",
                   background: isDark ? '#444' : '#ccc',
                   color: isDark ? '#eee' : '#333',
@@ -479,7 +621,6 @@ export default function ToDoBoard() {
         </div>
       )}
 
-      {/* Expanded Task Modal */}
       {expandedTask && (
         <div
           onClick={() => setExpandedTask(null)}
@@ -510,22 +651,22 @@ export default function ToDoBoard() {
             <p style={{ marginTop: "12px", lineHeight: "1.6", whiteSpace: 'pre-wrap' }}>
               {expandedTask.description || "No description provided."}
             </p>
-            <p style={{ marginTop: "15px", fontSize: '0.9rem', color: mutedColor }}>
-                Status: <span style={{ fontWeight: 'bold' }}>{expandedTask.taskStatus.replace('_', ' ')}</span>
+            <p style={{ marginTop: "15px", fontSize: '0.9rem', color: isDark ? PALETTE.darkText : PALETTE.lightText, opacity: 0.75 }}>
+              Status: <span style={{ fontWeight: 'bold' }}>{expandedTask.taskStatus.replace('_', ' ')}</span>
             </p>
             <button
-                onClick={() => setExpandedTask(null)}
-                style={{
-                  marginTop: '20px',
-                  padding: "8px 15px",
-                  borderRadius: "8px",
-                  background: isDark ? '#444' : '#ccc',
-                  color: isDark ? '#eee' : '#333',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
+              onClick={() => setExpandedTask(null)}
+              style={{
+                marginTop: '20px',
+                padding: "8px 15px",
+                borderRadius: "8px",
+                background: isDark ? '#444' : '#ccc',
+                color: isDark ? '#eee' : '#333',
+                border: 'none',
+                cursor: 'pointer'
+              }}
             >
-                Close
+              Close
             </button>
           </div>
         </div>

@@ -8,7 +8,7 @@ export function getUserId(): number | null {
   if (!token) return null;
 
   try {
-    const payload: any = jwtDecode(token);
+    const payload = jwtDecode<{ sub: number | string }>(token);
     return Number(payload.sub);
   } catch {
     return null;

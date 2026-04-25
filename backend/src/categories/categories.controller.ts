@@ -1,40 +1,70 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+
+import { Habit } from '../habits/entities/habit.entity';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { Category } from './entities/category.entity';
-import { Habit } from 'src/habits/entities/habit.entity';
 
-@Controller('categories')
+@ApiTags('categories')
+@ApiBearerAuth('access-token')
+@UseGuards(AuthGuard('jwt'))
+@Controller({ path: 'categories', version: '1' })
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
   @Post()
-  async create(@Body() createCategoryDto: CreateCategoryDto):Promise<string> {
-    return await this.categoriesService.create(createCategoryDto);
+  @ApiOperation({ summary: 'Create a new habit category.' })
+  create(@Body() createCategoryDto: CreateCategoryDto): Promise<Category> {
+    return this.categoriesService.create(createCategoryDto);
   }
 
   @Get()
-  async findAll():Promise<Category[]> {
-    return await this.categoriesService.findAll();
+  @ApiOperation({ summary: 'List all habit categories.' })
+  findAll(): Promise<Category[]> {
+    return this.categoriesService.findAll();
   }
 
   @Get(':id')
-  async findOne(@Param('id') categoryId: number):Promise<Category|null> {
-    return await this.categoriesService.findOne(+categoryId);
+  @ApiOperation({ summary: 'Fetch a single category.' })
+  findOne(@Param('id', ParseIntPipe) categoryId: number): Promise<Category> {
+    return this.categoriesService.findOne(categoryId);
   }
 
-  @Patch(':id/:name/:newName')
-  async update(@Param('id') categoryId: number, @Body('newName') newName:string ):Promise<string> {
-    return await this.categoriesService.update(+categoryId, newName);
+  @Patch(':id')
+  @ApiOperation({ summary: 'Rename a category.' })
+  update(
+    @Param('id', ParseIntPipe) categoryId: number,
+    @Body() dto: UpdateCategoryDto,
+  ): Promise<Category> {
+    return this.categoriesService.update(categoryId, dto);
   }
 
   @Delete(':id')
-  async remove(@Param('id') categoryId: number):Promise<string> {
-    return await this.categoriesService.remove(+categoryId);
+  @ApiOperation({ summary: 'Delete a category.' })
+  remove(@Param('id', ParseIntPipe) categoryId: number): Promise<{ message: string }> {
+    return this.categoriesService.remove(categoryId);
   }
+
   @Get(':id/habits')
-  async getHabits(@Param('id') categoryId:number):Promise<Habit[]>{
-    return await this.categoriesService.getHabits(categoryId);
+  @ApiOperation({ summary: 'List every habit that belongs to this category.' })
+  getHabits(@Param('id', ParseIntPipe) categoryId: number): Promise<Habit[]> {
+    return this.categoriesService.getHabits(categoryId);
   }
 }

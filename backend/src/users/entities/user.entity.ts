@@ -1,24 +1,45 @@
-import { Task } from "src/tasks/entities/task.entity";
-import { UserHabit } from "src/user-habits/entities/user-habit.entity";
-import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Exclude } from 'class-transformer';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+import { Task } from '../../tasks/entities/task.entity';
+import { UserHabit } from '../../user-habits/entities/user-habit.entity';
 
 @Entity('users')
 export class User {
-    @PrimaryGeneratedColumn({ name: 'user_id' })
-    userId: number;
+  @PrimaryGeneratedColumn({ name: 'user_id' })
+  userId!: number;
 
-    @Column({ name: 'name'})
-    name: string;
+  @Column({ name: 'name' })
+  name!: string;
 
-    @Column({ name: 'email', unique: true})
-    email: string;
+  @Index({ unique: true })
+  @Column({ name: 'email', unique: true })
+  email!: string;
 
-    @Column({name:'password_hash',unique:true})
-    passwordHash:string;
+  /**
+   * bcrypt hash — never returned to clients. `@Exclude()` is honoured by the
+   * global ClassSerializerInterceptor registered in main.ts.
+   */
+  @Exclude({ toPlainOnly: true })
+  @Column({ name: 'password_hash' })
+  password!: string;
 
-    @OneToMany(()=> Task, (task)=>task.user)
-    tasks:Task[]
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt!: Date;
 
-    @OneToMany(()=>UserHabit,(userhabit)=>userhabit.user)
-    userHabits:UserHabit[]
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt!: Date;
+
+  @OneToMany(() => Task, (task) => task.user)
+  tasks!: Task[];
+
+  @OneToMany(() => UserHabit, (userhabit) => userhabit.user)
+  userHabits!: UserHabit[];
 }

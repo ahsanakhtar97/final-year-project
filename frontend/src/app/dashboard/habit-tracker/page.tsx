@@ -1,53 +1,59 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
-// FIX: Changed import path to align with your other pages (assuming dashboard/layout provides the theme)
-import { useTheme } from "@/app/dashboard/layout";
+import { useTheme } from "@/app/dashboard/theme-context";
 import { Habit } from "@/types/habits";
 import { getUserId } from "@/lib/utils";
-import { assignHabit, getHabitsByUserId, revokeHabit } from "@/app/actions/user-habits";
+import {
+  assignHabit,
+  getHabitsByUserId,
+  revokeHabit,
+} from "@/app/actions/user-habits";
 import { completeHabit } from "@/app/actions/habit-logs";
-import { getHabits } from "@/app/actions/habits";
-import { getCategories } from "@/app/actions/categories";
+import { createHabit, getHabits } from "@/app/actions/habits";
+import { createCategory, getCategories } from "@/app/actions/categories";
 import { Category } from "@/types/categories";
 import { CreateUserHabitPayload } from "@/types/user-habits";
 import { toast } from "react-toastify";
+import {
+  Plus,
+  Trash2,
+  Check,
+  Undo2,
+  X,
+  Sparkles,
+  Wand2,
+  FolderPlus,
+} from "lucide-react";
+
+type ModalTab = "browse" | "custom";
 
 export default function HabitsPage() {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
+  const { primaryAccent } = useTheme();
 
-  const [userHabits, setUserHabits] = useState<(Habit & { completed?: boolean })[]>([]);
+  const [userHabits, setUserHabits] =
+    useState<(Habit & { completed?: boolean })[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [modalTab, setModalTab] = useState<ModalTab>("browse");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [userId, setUserId] = useState<number>(0);
+  const [showMoodModal, setShowMoodModal] = useState(false);
+  const [pendingHabit, setPendingHabit] =
+    useState<(Habit & { completed?: boolean }) | null>(null);
+  const [moodScore, setMoodScore] = useState(5);
 
+  // Custom habit creation form
+  const [newHabitName, setNewHabitName] = useState("");
+  const [newHabitCategoryId, setNewHabitCategoryId] = useState<string>("");
+  const [creatingHabit, setCreatingHabit] = useState(false);
 
-  // --- Theme Colors (Matching dashboard/to-do green theme) ---
-  const palette = {
-    // Light Mode
-    lightBg: "linear-gradient(180deg,#dff8e3,#bfe7c5)",
-    lightCard: "#ffffff",
-    lightText: "#123716",
-    lightAccent: "#163b25",
-
-    // Dark Mode (Deep Green)
-    darkBg: "linear-gradient(180deg,#06130f,#0f2a21)",
-    darkCard: "#0f241f",
-    darkText: "#e7f7ee",
-    darkAccent: "#8fe8b2",
-    darkBorder: "#2f6b45",
-  };
-
-  const cardBg = isDark ? palette.darkCard : palette.lightCard;
-  const textColor = isDark ? palette.darkText : palette.lightText;
-  const primaryAccent = isDark ? palette.darkAccent : palette.lightAccent;
-  const borderColor = isDark ? palette.darkBorder : "#e5e5e5";
-  const mutedColor = isDark ? "#a8d9bb" : "#666";
-
+  // Inline category creation
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [creatingCategory, setCreatingCategory] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -55,17 +61,16 @@ export default function HabitsPage() {
         setLoading(true);
         const uid = getUserId();
         if (!uid) return;
-
         setUserId(uid);
 
-        const [allHabits, userHabits, allCategories] = await Promise.all([
+        const [allHabits, uh, allCategories] = await Promise.all([
           getHabits(),
           getHabitsByUserId(uid),
           getCategories(),
         ]);
 
         setHabits(allHabits);
-        setUserHabits(userHabits);
+        setUserHabits(uh);
         setCategories(allCategories);
       } catch (err) {
         console.error(err);
@@ -80,21 +85,116 @@ export default function HabitsPage() {
   const habitsByCategory = useMemo(() => {
     const map: Record<string, Habit[]> = {};
     categories.forEach((cat) => {
-      map[cat.categoryId] = habits.filter((h) => h.categoryId === cat.categoryId);
+      map[cat.categoryId] = habits.filter(
+        (h) => h.categoryId === cat.categoryId,
+      );
     });
     return map;
   }, [categories, habits]);
 
+  // Habits the user hasn't already added.
+  const availableHabits = useMemo(() => {
+    const taken = new Set(userHabits.map((h) => h.habitId));
+    return habits.filter((h) => !taken.has(h.habitId));
+  }, [habits, userHabits]);
+
+  const filteredHabits = selectedCategory
+    ? (habitsByCategory[selectedCategory] || []).filter(
+        (h) => !userHabits.some((u) => u.habitId === h.habitId),
+      )
+    : availableHabits;
+
+  const openModal = () => {
+    setShowModal(true);
+    setModalTab("browse");
+    if (selectedCategory) setNewHabitCategoryId(selectedCategory);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setSelectedCategory("");
+    setModalTab("browse");
+    setNewHabitName("");
+    setNewHabitCategoryId("");
+    setShowNewCategoryInput(false);
+    setNewCategoryName("");
+  };
+
   const addHabit = async (habit: Habit) => {
     try {
-      const payload: CreateUserHabitPayload = { userId, habitId: habit.habitId };
+      const payload: CreateUserHabitPayload = {
+        userId,
+        habitId: habit.habitId,
+      };
       await assignHabit(payload);
       setUserHabits((prev) => [...prev, { ...habit, completed: false }]);
-      setShowModal(false);
-      setSelectedCategory("");
-      toast.success("Habit added!");
-    } catch (err) {
+      toast.success(`Added "${habit.habitName}"`);
+    } catch {
       toast.error("Error adding habit");
+    }
+  };
+
+  const handleCreateCategory = async () => {
+    const name = newCategoryName.trim();
+    if (!name) {
+      toast.warn("Give the category a name first.");
+      return;
+    }
+    if (
+      categories.some(
+        (c) => c.categoryName.toLowerCase() === name.toLowerCase(),
+      )
+    ) {
+      toast.info("That category already exists.");
+      const existing = categories.find(
+        (c) => c.categoryName.toLowerCase() === name.toLowerCase(),
+      );
+      if (existing) setNewHabitCategoryId(String(existing.categoryId));
+      setShowNewCategoryInput(false);
+      setNewCategoryName("");
+      return;
+    }
+    setCreatingCategory(true);
+    try {
+      const created = await createCategory({ categoryName: name });
+      setCategories((prev) => [...prev, created]);
+      setNewHabitCategoryId(String(created.categoryId));
+      setShowNewCategoryInput(false);
+      setNewCategoryName("");
+      toast.success(`Category "${created.categoryName}" created`);
+    } catch {
+      toast.error("Couldn't create that category");
+    } finally {
+      setCreatingCategory(false);
+    }
+  };
+
+  const handleCreateHabit = async () => {
+    const name = newHabitName.trim();
+    if (!name) {
+      toast.warn("Give your habit a name first.");
+      return;
+    }
+    if (!newHabitCategoryId) {
+      toast.warn("Pick a category for this habit.");
+      return;
+    }
+    setCreatingHabit(true);
+    try {
+      const created = await createHabit({
+        habitName: name,
+        categoryId: Number(newHabitCategoryId),
+      });
+      setHabits((prev) => [...prev, created]);
+      await assignHabit({ userId, habitId: created.habitId });
+      setUserHabits((prev) => [...prev, { ...created, completed: false }]);
+      toast.success(`"${created.habitName}" added to your tracker`);
+      setNewHabitName("");
+      setModalTab("browse");
+    } catch {
+      toast.error("Couldn't create that habit");
+    } finally {
+      setCreatingHabit(false);
     }
   };
 
@@ -103,262 +203,484 @@ export default function HabitsPage() {
       await revokeHabit({ userId, habitId: habit.habitId });
       setUserHabits((prev) => prev.filter((h) => h.habitId !== habit.habitId));
       toast.info("Habit removed");
-    } catch (err) {
+    } catch {
       toast.error("Error removing habit");
     }
   };
 
-  // In your habit-tracker/page.tsx file
-
-  // ... (existing imports and component logic)
-
   const toggleComplete = async (habit: Habit & { completed?: boolean }) => {
+    if (habit.completed) {
+      try {
+        await completeHabit({ userId, habitId: habit.habitId });
+        setUserHabits((prev) =>
+          prev.map((h) =>
+            h.habitId === habit.habitId ? { ...h, completed: false } : h,
+          ),
+        );
+        toast.info("Habit marked as incomplete");
+      } catch {
+        toast.error("Error updating habit");
+      }
+      return;
+    }
+    setPendingHabit(habit);
+    setShowMoodModal(true);
+  };
+
+  const submitCompletionWithMood = async () => {
+    if (!pendingHabit) return;
     try {
-      // Send request to toggle completion status on the server
-      const serverResponse = await completeHabit({ userId, habitId: habit.habitId });
-
-      // Determine the *new* completion state from the local update before the server call
-      // OR, rely on the server to tell us the final status.
-      // Since we modified completeHabit to toggle, we flip the local state optimistically:
-
-      const isCurrentlyCompleted = habit.completed;
-
+      await completeHabit({
+        userId,
+        habitId: pendingHabit.habitId,
+        moodScore,
+      });
       setUserHabits((prev) =>
         prev.map((h) =>
-          h.habitId === habit.habitId ? { ...h, completed: !isCurrentlyCompleted } : h
-        )
+          h.habitId === pendingHabit.habitId ? { ...h, completed: true } : h,
+        ),
       );
-
-      toast.success(isCurrentlyCompleted ? "Habit marked as incomplete" : "Habit completed!");
-    } catch (err) {
-      toast.error("Error updating habit");
+      toast.success("Habit completed! Mood logged.");
+      setShowMoodModal(false);
+      setPendingHabit(null);
+    } catch {
+      toast.error("Failed to log mood and habit");
     }
   };
 
-  // ... (rest of the component)
-
-  if (loading) return <p>Loading habits...</p>;
-
-  const filteredHabits = selectedCategory ? habitsByCategory[selectedCategory] || [] : habits;
-
-  // Style for the main header containing the title and the button
-  const headerContainerStyle: React.CSSProperties = {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "20px", // Maintains gap below the header
-  };
+  const browseCategories = useMemo(
+    () =>
+      categories.filter(
+        (c) => (habitsByCategory[c.categoryId] || []).length > 0,
+      ),
+    [categories, habitsByCategory],
+  );
 
   return (
-    <div
-      style={{
-        padding: "24px",
-        minHeight: "100vh",
-        // FIX 1: Apply green theme background
-        background: isDark ? palette.darkBg : palette.lightBg,
-        color: textColor,
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
-      {/* New Header Container for Title and Button */}
-      <div style={headerContainerStyle}>
-        <h1 style={{ fontSize: "28px", fontWeight: "bold", color: primaryAccent, margin: 0 }}>
-          Your Habits
-        </h1>
-
-        {/* MOVED: Add Habit Button */}
-        <button
-          onClick={() => setShowModal(true)}
-          style={{
-            padding: "10px 16px",
-            // FIX 3: Apply themed accent button color
-            backgroundColor: primaryAccent,
-            color: isDark ? palette.lightText : "#fff",
-            border: "none",
-            borderRadius: "8px", // Adjusted slightly for cleaner look
-            cursor: "pointer",
-            fontWeight: 600,
-          }}
-        >
-          + Add Habit
+    <div className="mx-auto max-w-5xl gf-fade-up">
+      {/* Header */}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1
+            className="gf-h1"
+            style={{ fontFamily: "'Lora', serif", color: primaryAccent }}
+          >
+            Your Habits
+          </h1>
+          <p className="gf-muted mt-1 text-sm">
+            Build routines that stick. Tap complete, log your mood, watch
+            yourself grow.
+          </p>
+        </div>
+        <button onClick={openModal} className="gf-btn gf-btn-primary">
+          <Plus size={16} /> Add habit
         </button>
       </div>
 
-
-      {/* User Habits */}
-      <section style={{ marginBottom: "40px" }}>
-        <h2 style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "12px" }}>
-          Selected Habits
-        </h2>
-
-        {userHabits.length === 0 ? (
-          <p style={{ color: mutedColor }}>No habits added yet.</p>
-        ) : (
-          <ul style={{ listStyle: "none", padding: 0 }}>
-            {userHabits.map((habit) => (
+      {/* Loading skeleton */}
+      {loading ? (
+        <div className="space-y-3">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="gf-skeleton h-16 w-full" />
+          ))}
+        </div>
+      ) : userHabits.length === 0 ? (
+        <div className="gf-card p-10 text-center">
+          <div
+            className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl"
+            style={{
+              background: "rgba(31,191,117,0.15)",
+              color: primaryAccent,
+            }}
+          >
+            <Sparkles size={22} />
+          </div>
+          <h3 className="gf-h2">No habits yet</h3>
+          <p className="gf-muted mt-1 text-sm">
+            Pick from our starter habits or write your own — start with one.
+          </p>
+          <button
+            onClick={openModal}
+            className="gf-btn gf-btn-primary mt-5 mx-auto"
+          >
+            <Plus size={16} /> Add your first habit
+          </button>
+        </div>
+      ) : (
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {userHabits.map((habit) => {
+            const catName =
+              categories.find((c) => c.categoryId === habit.categoryId)
+                ?.categoryName || "";
+            return (
               <li
                 key={habit.habitId}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "12px",
-                  marginBottom: "10px",
-                  // FIX 2: Apply themed card background
-                  backgroundColor: cardBg,
-                  borderRadius: "8px",
-                  boxShadow: isDark ? "0 4px 8px rgba(0,0,0,0.4)" : "0 2px 4px rgba(0,0,0,0.1)",
-                  textDecoration: habit.completed ? "line-through" : "none",
-                  opacity: habit.completed ? 0.7 : 1,
-                  border: `1px solid ${borderColor}`,
-                }}
+                className="gf-card gf-card-hover flex items-center justify-between gap-3 p-4"
+                style={{ opacity: habit.completed ? 0.75 : 1 }}
               >
-                <div>
-                  <p style={{ margin: 0, fontWeight: "bold" }}>{habit.habitName}</p>
-                  <p style={{ margin: 0, fontSize: "12px", color: mutedColor }}>
-                    {categories.find((c) => c.categoryId === habit.categoryId)?.categoryName}
+                <div className="min-w-0">
+                  <p
+                    className="truncate font-semibold"
+                    style={{
+                      textDecoration: habit.completed
+                        ? "line-through"
+                        : "none",
+                    }}
+                  >
+                    {habit.habitName}
                   </p>
+                  {catName && (
+                    <span className="gf-chip mt-1 text-[11px]">{catName}</span>
+                  )}
                 </div>
-
-                <div style={{ display: "flex", gap: "8px" }}>
+                <div className="flex shrink-0 gap-2">
                   <button
                     onClick={() => toggleComplete(habit)}
-                    style={{
-                      padding: "6px 12px",
-                      // Use themed accent color for Complete button
-                      backgroundColor: habit.completed ? "#f39c12" : primaryAccent,
-                      color: isDark && !habit.completed ? palette.lightText : "#fff", // Dark text on dark accent
-                      border: "none",
-                      borderRadius: "6px",
-                      cursor: "pointer",
-                    }}
+                    className={`gf-btn !py-2 !px-3 ${
+                      habit.completed ? "gf-btn-ghost" : "gf-btn-primary"
+                    }`}
+                    aria-label={habit.completed ? "Undo" : "Complete"}
                   >
-                    {habit.completed ? "Undo" : "Complete"}
+                    {habit.completed ? (
+                      <Undo2 size={16} />
+                    ) : (
+                      <Check size={16} />
+                    )}
+                    <span className="hidden sm:inline">
+                      {habit.completed ? "Undo" : "Done"}
+                    </span>
                   </button>
-
                   <button
                     onClick={() => deleteHabit(habit)}
-                    style={{
-                      padding: "6px 12px",
-                      backgroundColor: "#e74c3c",
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: "6px",
-                      cursor: "pointer",
-                    }}
+                    className="gf-btn gf-btn-danger !py-2 !px-3"
+                    aria-label="Delete habit"
                   >
-                    Delete
+                    <Trash2 size={16} />
                   </button>
                 </div>
               </li>
-            ))}
-          </ul>
-        )}
-      </section>
+            );
+          })}
+        </ul>
+      )}
 
-      {/* REMOVED OLD BUTTON POSITION */}
-
-      {/* Modal */}
+      {/* Add-habit modal */}
       {showModal && (
         <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            backgroundColor: "rgba(0,0,0,0.5)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 1000,
-          }}
-          onClick={() => {
-            setShowModal(false);
-            setSelectedCategory("");
-          }}
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
+          onClick={closeModal}
         >
           <div
-            style={{
-              // FIX 4: Apply themed modal background
-              backgroundColor: cardBg,
-              padding: "24px",
-              borderRadius: "12px",
-              width: "90%",
-              maxWidth: "600px",
-              maxHeight: "80%",
-              overflowY: "auto",
-              color: textColor,
-            }}
+            className="gf-card w-full max-w-xl overflow-hidden sm:rounded-2xl rounded-t-2xl max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 style={{ fontSize: "22px", fontWeight: "bold", marginBottom: "16px" }}>
-              Add New Habit
-            </h2>
+            <div className="flex items-center justify-between border-b border-[var(--gf-border)] p-4">
+              <h2 className="gf-h2">Add a habit</h2>
+              <button
+                type="button"
+                className="gf-btn gf-btn-ghost !p-2"
+                aria-label="Close"
+                onClick={closeModal}
+              >
+                <X size={16} />
+              </button>
+            </div>
 
-            <div style={{ marginBottom: "16px" }}>
-              <label style={{ marginRight: "8px", fontWeight: "bold" }}>
-                Filter by category:
-              </label>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
+            {/* Tabs */}
+            <div className="flex border-b border-[var(--gf-border)]">
+              <button
+                onClick={() => setModalTab("browse")}
+                className={`flex-1 px-4 py-3 text-sm font-semibold transition-colors ${
+                  modalTab === "browse" ? "" : "gf-muted hover:opacity-80"
+                }`}
                 style={{
-                  padding: "6px 10px",
-                  borderRadius: "6px",
-                  // FIX 5: Themed border and background for select input
-                  border: `1px solid ${borderColor}`,
-                  background: isDark ? palette.darkCard : palette.lightCard,
-                  color: textColor,
-                  cursor: "pointer",
+                  color: modalTab === "browse" ? primaryAccent : undefined,
+                  borderBottom:
+                    modalTab === "browse"
+                      ? `2px solid ${primaryAccent}`
+                      : "2px solid transparent",
                 }}
               >
-                <option value="">All</option>
-                {categories.map((category) => (
-                  <option key={category.categoryId} value={category.categoryId}>
-                    {category.categoryName}
-                  </option>
-                ))}
-              </select>
+                <Sparkles size={14} className="inline mr-1.5" /> Browse
+              </button>
+              <button
+                onClick={() => setModalTab("custom")}
+                className={`flex-1 px-4 py-3 text-sm font-semibold transition-colors ${
+                  modalTab === "custom" ? "" : "gf-muted hover:opacity-80"
+                }`}
+                style={{
+                  color: modalTab === "custom" ? primaryAccent : undefined,
+                  borderBottom:
+                    modalTab === "custom"
+                      ? `2px solid ${primaryAccent}`
+                      : "2px solid transparent",
+                }}
+              >
+                <Wand2 size={14} className="inline mr-1.5" /> Create your own
+              </button>
             </div>
 
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
-              {filteredHabits.map((habit) => (
-                <button
-                  key={habit.habitId}
-                  onClick={() => addHabit(habit)}
-                  style={{
-                    padding: "8px 12px",
-                    // FIX 6: Themed habit buttons
-                    border: `1px solid ${borderColor}`,
-                    borderRadius: "8px",
-                    backgroundColor: isDark ? palette.darkCard : "#f9f9f9",
-                    color: textColor,
-                    cursor: "pointer",
-                  }}
-                >
-                  {habit.habitName}
-                </button>
-              ))}
-            </div>
+            {/* BROWSE TAB */}
+            {modalTab === "browse" && (
+              <>
+                <div className="border-b border-[var(--gf-border)] p-4">
+                  <label className="gf-muted text-xs font-semibold uppercase tracking-wider">
+                    Filter by category
+                  </label>
+                  {categories.length === 0 ? (
+                    <p className="gf-muted mt-2 text-sm">
+                      No categories yet. Switch to{" "}
+                      <button
+                        onClick={() => setModalTab("custom")}
+                        className="underline font-semibold"
+                        style={{ color: primaryAccent }}
+                      >
+                        Create your own
+                      </button>{" "}
+                      to add one.
+                    </p>
+                  ) : (
+                    <select
+                      value={selectedCategory}
+                      onChange={(e) => setSelectedCategory(e.target.value)}
+                      className="gf-select mt-1.5"
+                    >
+                      <option value="">All categories</option>
+                      {categories.map((c) => (
+                        <option key={c.categoryId} value={c.categoryId}>
+                          {c.categoryName}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
 
-            <button
-              onClick={() => {
-                setShowModal(false);
-                setSelectedCategory("");
-              }}
-              style={{
-                marginTop: "16px",
-                padding: "8px 16px",
-                backgroundColor: "#999",
-                color: "#fff",
-                border: "none",
-                borderRadius: "6px",
-                cursor: "pointer",
-              }}
-            >
-              Close
-            </button>
+                <div className="flex-1 overflow-y-auto gf-scroll p-4">
+                  {filteredHabits.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="gf-muted text-sm mb-3">
+                        {habits.length === 0
+                          ? "No starter habits available yet."
+                          : selectedCategory
+                            ? "Nothing left in this category to add."
+                            : "You've added every starter habit. Nice!"}
+                      </p>
+                      <button
+                        onClick={() => setModalTab("custom")}
+                        className="gf-btn gf-btn-primary mx-auto"
+                      >
+                        <Wand2 size={14} /> Create your own habit
+                      </button>
+                    </div>
+                  ) : selectedCategory ? (
+                    <div className="flex flex-wrap gap-2">
+                      {filteredHabits.map((h) => (
+                        <button
+                          key={h.habitId}
+                          onClick={() => addHabit(h)}
+                          className="gf-btn gf-btn-ghost !py-1.5 !px-3 text-sm"
+                        >
+                          <Plus size={14} /> {h.habitName}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-5">
+                      {browseCategories.map((cat) => {
+                        const items = (
+                          habitsByCategory[cat.categoryId] || []
+                        ).filter(
+                          (h) =>
+                            !userHabits.some((u) => u.habitId === h.habitId),
+                        );
+                        if (items.length === 0) return null;
+                        return (
+                          <div key={cat.categoryId}>
+                            <h4
+                              className="text-xs font-semibold uppercase tracking-wider mb-2"
+                              style={{ color: primaryAccent }}
+                            >
+                              {cat.categoryName}
+                            </h4>
+                            <div className="flex flex-wrap gap-2">
+                              {items.map((h) => (
+                                <button
+                                  key={h.habitId}
+                                  onClick={() => addHabit(h)}
+                                  className="gf-btn gf-btn-ghost !py-1.5 !px-3 text-sm"
+                                >
+                                  <Plus size={14} /> {h.habitName}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* CUSTOM TAB */}
+            {modalTab === "custom" && (
+              <div className="flex-1 overflow-y-auto gf-scroll p-4 space-y-4">
+                <div>
+                  <label className="gf-muted text-xs font-semibold uppercase tracking-wider">
+                    Habit name
+                  </label>
+                  <input
+                    type="text"
+                    value={newHabitName}
+                    onChange={(e) => setNewHabitName(e.target.value)}
+                    placeholder="e.g. Stretch for 5 minutes"
+                    maxLength={120}
+                    className="gf-input mt-1.5 w-full"
+                    autoFocus
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between">
+                    <label className="gf-muted text-xs font-semibold uppercase tracking-wider">
+                      Category
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowNewCategoryInput((v) => !v);
+                        setNewCategoryName("");
+                      }}
+                      className="text-xs font-semibold inline-flex items-center gap-1 hover:opacity-80"
+                      style={{ color: primaryAccent }}
+                    >
+                      <FolderPlus size={12} />
+                      {showNewCategoryInput ? "Cancel" : "New category"}
+                    </button>
+                  </div>
+
+                  {!showNewCategoryInput ? (
+                    <select
+                      value={newHabitCategoryId}
+                      onChange={(e) => setNewHabitCategoryId(e.target.value)}
+                      className="gf-select mt-1.5 w-full"
+                    >
+                      <option value="">
+                        {categories.length === 0
+                          ? "No categories yet — add one"
+                          : "Pick a category…"}
+                      </option>
+                      {categories.map((c) => (
+                        <option key={c.categoryId} value={c.categoryId}>
+                          {c.categoryName}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="mt-1.5 flex gap-2">
+                      <input
+                        type="text"
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        placeholder="e.g. Side projects"
+                        maxLength={60}
+                        className="gf-input flex-1"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCreateCategory}
+                        disabled={creatingCategory || !newCategoryName.trim()}
+                        className="gf-btn gf-btn-primary"
+                      >
+                        {creatingCategory ? "…" : "Add"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={handleCreateHabit}
+                    disabled={
+                      creatingHabit ||
+                      !newHabitName.trim() ||
+                      !newHabitCategoryId
+                    }
+                    className="gf-btn gf-btn-primary w-full"
+                  >
+                    {creatingHabit ? (
+                      "Creating…"
+                    ) : (
+                      <>
+                        <Plus size={16} /> Create &amp; track
+                      </>
+                    )}
+                  </button>
+                  <p className="gf-muted text-xs text-center mt-2">
+                    Your habit will be added to your tracker right away.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Mood modal */}
+      {showMoodModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+        >
+          <div className="gf-card w-full max-w-sm p-6 text-center">
+            <h3 className="gf-h2">How are you feeling?</h3>
+            <p className="gf-muted mt-1 text-sm">
+              Log your mood to power better insights.
+            </p>
+            <div className="my-5 text-5xl">
+              {moodScore <= 3
+                ? "\u{1F614}"
+                : moodScore <= 7
+                  ? "\u{1F60A}"
+                  : "\u{1F680}"}
+            </div>
+            <input
+              type="range"
+              min={1}
+              max={10}
+              value={moodScore}
+              onChange={(e) => setMoodScore(parseInt(e.target.value))}
+              className="w-full cursor-pointer"
+              style={{ accentColor: primaryAccent }}
+            />
+            <div className="mt-2 flex justify-between text-sm gf-muted">
+              <span>1</span>
+              <span
+                className="text-lg font-bold"
+                style={{ color: primaryAccent }}
+              >
+                {moodScore}
+              </span>
+              <span>10</span>
+            </div>
+            <div className="mt-6 flex flex-col gap-2">
+              <button
+                onClick={submitCompletionWithMood}
+                className="gf-btn gf-btn-primary w-full"
+              >
+                Log mood &amp; complete
+              </button>
+              <button
+                onClick={() => setShowMoodModal(false)}
+                className="gf-btn gf-btn-ghost w-full"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

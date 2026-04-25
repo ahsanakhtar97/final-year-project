@@ -1,102 +1,82 @@
+import api from "@/lib/axios"; // Use your configured instance
 import { CreateUserHabitPayload } from "@/types/user-habits";
-import axios from "axios";
 import { getUserHabit } from "./user-habits";
-// Assuming you have getUserId imported somewhere if needed for other file use
 
 const BASE_URL = "/habit-logs";
 
 // ---------------- CREATE HABIT LOG ----------------
-export const createHabitLog = async (userHabitId: number, date: string, status: "completed" | "not_completed") => {
+type ApiError = { response?: { data?: unknown }; message?: string };
+const describe = (e: unknown): unknown => {
+  const err = e as ApiError;
+  return err.response?.data ?? err.message ?? e;
+};
+
+export const createHabitLog = async (
+  userHabitId: number,
+  date: string,
+  status: string,
+  moodScore?: number,
+) => {
   try {
-    const response = await axios.post(BASE_URL, { userHabitId, date, status });
+    const response = await api.post(`${BASE_URL}/complete`, {
+      userHabitId,
+      date,
+      status,
+      moodScore,
+    });
     return response.data;
-  } catch (error: any) {
-    console.error("Error creating habit log:", error.response?.data || error.message);
+  } catch (error: unknown) {
+    console.error("Error creating habit log:", describe(error));
     throw error;
   }
 };
 
-// ---------------- GET ALL HABIT LOGS (GENERAL) ----------------
-// Retaining original, though it's likely the source of the 404 if permissions/path are strict.
-export const getAllHabitLogs = async () => {
-  try {
-    const response = await axios.get(BASE_URL);
-    return response.data;
-  } catch (error: any) {
-    console.error("Error fetching habit logs:", error.response?.data || error.message);
-    throw error;
-  }
-};
-
-// ---------------- GET HABIT LOGS BY USER ID (New Function) ----------------
-// Assuming the backend endpoint accepts a query parameter like ?userId=
+// ---------------- GET HABIT LOGS BY USER ID ----------------
 export const getHabitLogsByUserId = async (userId: number) => {
   try {
-    // FIX: Using query parameter to filter logs for the specific user
-    const response = await axios.get(`${BASE_URL}?userId=${userId}`);
+    const response = await api.get(`${BASE_URL}?userId=${userId}`);
     return response.data;
-  } catch (error: any) {
-    console.error("Error fetching habit logs by user ID:", error.response?.data || error.message);
-    throw error;
-  }
-};
-
-// ---------------- GET ONE HABIT LOG ----------------
-export const getHabitLog = async (logId: number) => {
-  try {
-    const response = await axios.get(`${BASE_URL}/${logId}`);
-    return response.data;
-  } catch (error: any) {
-    console.error("Error fetching habit log:", error.response?.data || error.message);
-    throw error;
+  } catch (error: unknown) {
+    console.error("Error fetching habit logs by user ID:", describe(error));
+    return [];
   }
 };
 
 // ---------------- UPDATE HABIT LOG ----------------
-export const updateHabitLog = async (logId: number, status: "completed" | "not_completed") => {
+export const updateHabitLog = async (logId: number, status: string) => {
   try {
-    const response = await axios.patch(`${BASE_URL}/${logId}`, { status });
+    const response = await api.patch(`${BASE_URL}/${logId}`, { status });
     return response.data;
-  } catch (error: any) {
-    console.error("Error updating habit log:", error.response?.data || error.message);
+  } catch (error: unknown) {
+    console.error("Error updating habit log:", describe(error));
     throw error;
   }
 };
 
-// ---------------- DELETE HABIT LOG ----------------
-export const deleteHabitLog = async (logId: number) => {
-  try {
-    const response = await axios.delete(`${BASE_URL}/${logId}`);
-    return response.data;
-  } catch (error: any) {
-    console.error("Error deleting habit log:", error.response?.data || error.message);
-    throw error;
-  }
-};
-
-
-export async function completeHabit(data: CreateUserHabitPayload) {
+// ---------------- COMPLETE HABIT (THE MAIN FUNCTION) ----------------
+export async function completeHabit(data: CreateUserHabitPayload & { moodScore?: number }) {
   try {
     const userHabit = await getUserHabit(data.userId, data.habitId);
     const userHabitId = userHabit.userHabitId;
-    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    const today = new Date().toISOString().split("T")[0];
 
-    // FIX: Fetch habit logs specifically for the user, not all logs
+    // Fetch existing logs to see if we already logged today
     const logs = await getHabitLogsByUserId(data.userId);
 
     const todayLog = logs.find(
-      (log: any) => log.userHabitId === userHabitId && log.date === today
+      (log: { userHabitId: number; date: string }) =>
+        log.userHabitId === userHabitId && log.date === today,
     );
 
     if (todayLog) {
-      // Update existing log to completed
+      // Update existing log
       return await updateHabitLog(todayLog.logId, "completed");
     } else {
-      // Create a new log for today
-      return await createHabitLog(userHabitId, today, "completed");
+      // Create new log with the Mood Score from the UI
+      return await createHabitLog(userHabitId, today, "completed", data.moodScore);
     }
   } catch (error) {
-    console.error("Error completing habit:", error);
+    console.error("Error in completeHabit action:", error);
     throw error;
   }
 }

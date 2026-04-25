@@ -1,12 +1,16 @@
 import { Module } from '@nestjs/common';
-import { HabitsService } from './habits.service';
-import { HabitsController } from './habits.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
+
+import { Category } from '../categories/entities/category.entity';
 import { Habit } from './entities/habit.entity';
+import { HabitsController } from './habits.controller';
+import { HabitsSeedService } from './habits.seed';
+import { HabitsService } from './habits.service';
 
 @Module({
-  imports:[TypeOrmModule.forFeature([Habit])],
+  imports: [TypeOrmModule.forFeature([Habit, Category])],
   controllers: [HabitsController],
-  providers: [HabitsService],
+  providers: [HabitsService, HabitsSeedService],
+  exports: [HabitsService],
 })
 export class HabitsModule {}

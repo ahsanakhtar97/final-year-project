@@ -12,7 +12,13 @@ import { Eye, EyeOff } from 'lucide-react'; // Import Lucide Icons
   Helper component for password input with a visible toggle icon.
   This component manages its own show/hide state internally.
 */
-const PasswordInput = ({ value, onChange, placeholder, style }: any) => {
+interface PasswordInputProps {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder: string;
+  style?: React.CSSProperties;
+}
+const PasswordInput = ({ value, onChange, placeholder, style }: PasswordInputProps) => {
   const [showPass, setShowPass] = useState(false);
   
   // Custom wrapper style to allow the icon to overlap the input padding
@@ -145,7 +151,7 @@ export default function Register() {
           <PasswordInput
             placeholder="Password"
             value={password}
-            onChange={(e: any) => setPassword(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
             style={inputStyle}
           />
 
@@ -153,7 +159,7 @@ export default function Register() {
           <PasswordInput
             placeholder="Confirm Password"
             value={confirmPassword}
-            onChange={(e: any) => setConfirmPassword(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
             style={inputStyle}
           />
 

@@ -1,31 +1,51 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from "@nestjs/common";
-import { JwtService } from "@nestjs/jwt";
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { Request } from 'express';
 
+interface JwtTokenPayload {
+  sub: number;
+  name: string;
+  email: string;
+}
+
+/**
+ * Lightweight JWT guard kept for backwards compatibility with routes that
+ * haven't migrated to the passport-based `AuthGuard('jwt')` yet. Prefer
+ * `@UseGuards(AuthGuard('jwt'))` from @nestjs/passport for new code.
+ */
 @Injectable()
 export class AuthGuard implements CanActivate {
-    constructor(private jwtService: JwtService) {}
+  private readonly logger = new Logger(AuthGuard.name);
 
-    async canActivate(context: ExecutionContext): Promise<boolean> {
-        const request = context.switchToHttp().getRequest();
-        const authorization = request.headers.authorization;
+  constructor(private readonly jwtService: JwtService) {}
 
-        // Check for Bearer token
-        const token = authorization?.split(' ')[1];
-        if (!token) {
-            throw new UnauthorizedException('Missing token');
-        }
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest<
+      Request & { user?: JwtTokenPayload & { userId: number } }
+    >();
+    const authorization = request.headers.authorization;
 
-        try {
-            const tokenPayload = await this.jwtService.verifyAsync(token);
-            console.log(tokenPayload)
-            request.user = {
-                userId: tokenPayload.sub,
-                name: tokenPayload.name,
-                email:tokenPayload.email
-            };
-            return true;
-        } catch (error) {
-            throw new UnauthorizedException('Invalid token');
-        }
+    const token = authorization?.split(' ')[1];
+    if (!token) {
+      throw new UnauthorizedException('Missing token');
     }
+
+    try {
+      const payload = await this.jwtService.verifyAsync<JwtTokenPayload>(token);
+      request.user = {
+        ...payload,
+        userId: payload.sub,
+      };
+      return true;
+    } catch (err) {
+      this.logger.debug(`JWT verification failed: ${(err as Error).message}`);
+      throw new UnauthorizedException('Invalid token');
+    }
+  }
 }

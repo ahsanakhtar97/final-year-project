@@ -1,75 +1,112 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
-import { UserHabitsService } from './user-habits.service';
-import { CreateUserHabitDto } from './dto/create-user-habit.dto';
-import { UpdateUserHabitDto } from './dto/update-user-habit.dto';
-import { UserHabit } from './entities/user-habit.entity';
-import { Habit } from 'src/habits/entities/habit.entity';
+import {
+  Body,
+  Controller,
+  DefaultValuePipe,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 
-@Controller('user-habits')
+import { Habit } from '../habits/entities/habit.entity';
+import { CreateUserHabitDto } from './dto/create-user-habit.dto';
+import { UserHabit } from './entities/user-habit.entity';
+import { UserHabitsService } from './user-habits.service';
+
+@ApiTags('user-habits')
+@ApiBearerAuth('access-token')
+@UseGuards(AuthGuard('jwt'))
+@Controller({ path: 'user-habits', version: '1' })
 export class UserHabitsController {
-  constructor(private readonly userHabitsService: UserHabitsService) { }
+  constructor(private readonly userHabitsService: UserHabitsService) {}
 
   @Post()
-  async assignHabit(@Body() createUserHabitDto: CreateUserHabitDto) {
+  @ApiOperation({ summary: 'Assign a habit to a user.' })
+  assignHabit(@Body() createUserHabitDto: CreateUserHabitDto): Promise<UserHabit> {
     return this.userHabitsService.assignHabit(createUserHabitDto);
   }
 
   @Get()
-  async findAll(): Promise<UserHabit[]> {
-    return await this.userHabitsService.findAll();
+  @ApiOperation({ summary: 'List every user-habit row in the system.' })
+  findAll(): Promise<UserHabit[]> {
+    return this.userHabitsService.findAll();
   }
 
   @Get('user/:userId/habit/:habitId')
-  async findUserHabit(@Param('userId') userId:number,@Param('habitId') habitId:number) {
-    return await this.userHabitsService.findUserHabit(userId,habitId);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserHabitDto: UpdateUserHabitDto) {
-    return this.userHabitsService.update(+id, updateUserHabitDto);
+  @ApiOperation({ summary: 'Find the join row for a (user, habit) pair.' })
+  findUserHabit(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Param('habitId', ParseIntPipe) habitId: number,
+  ): Promise<UserHabit | null> {
+    return this.userHabitsService.findUserHabit(userId, habitId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.userHabitsService.remove(+id);
+  @ApiOperation({ summary: 'Delete a user-habit row by id.' })
+  remove(@Param('id', ParseIntPipe) id: number): Promise<{ message: string }> {
+    return this.userHabitsService.remove(id);
   }
+
   @Get('user/:id')
-  async findHabitsByUserId(@Param('id') userId: number): Promise<Habit[]> {
-    return await this.userHabitsService.findHabitsByUserId(userId);
+  @ApiOperation({ summary: "Return all habits the user has been assigned." })
+  findHabitsByUserId(@Param('id', ParseIntPipe) userId: number): Promise<Habit[]> {
+    return this.userHabitsService.findHabitsByUserId(userId);
   }
 
   @Get('logs/last7days/:userId')
-  async getCompletedLast7Days(@Param('userId') userId: number): Promise<any> {
-    return await this.userHabitsService.getCompletedLast7Days(userId);
+  @ApiOperation({ summary: 'Return the user’s habit logs for the past 7 days.' })
+  getCompletedLast7Days(@Param('userId', ParseIntPipe) userId: number) {
+    return this.userHabitsService.getCompletedLast7Days(userId);
   }
 
   @Get('user/:id/stats')
-  async getHabitStats(@Param('id') userId: number, @Query('days') days = 30) {
-    return await this.userHabitsService.getHabitStats(userId, days);
+  @ApiOperation({ summary: 'Per-habit completion percentage over a window of days.' })
+  getHabitStats(
+    @Param('id', ParseIntPipe) userId: number,
+    @Query('days', new DefaultValuePipe(30), ParseIntPipe) days: number,
+  ) {
+    return this.userHabitsService.getHabitStats(userId, days);
   }
 
   @Get('user/:id/stats/best-worst')
-  async getBestWorstHabit(@Param('id') userId: number, @Query('days') days = 30) {
-    return await this.userHabitsService.getBestWorstHabit(userId, days);
+  @ApiOperation({ summary: 'Pick the user’s best- and worst-performing habits.' })
+  getBestWorstHabit(
+    @Param('id', ParseIntPipe) userId: number,
+    @Query('days', new DefaultValuePipe(30), ParseIntPipe) days: number,
+  ) {
+    return this.userHabitsService.getBestWorstHabit(userId, days);
   }
 
   @Get('user/:id/stats/streaks')
-  async getHabitStreaks(@Param('id') userId: number) {
-    return await this.userHabitsService.getHabitStreaks(userId);
+  @ApiOperation({ summary: 'Compute current + longest streak per habit.' })
+  getHabitStreaks(@Param('id', ParseIntPipe) userId: number) {
+    return this.userHabitsService.getHabitStreaks(userId);
   }
 
   @Get('user/:userId/completed/:days')
-  async getCompletedHabitsDaily(
-    @Param('userId') userId: number,
-    @Param('days') days: number
+  @ApiOperation({ summary: 'Daily count of completed habits for the past N days.' })
+  getCompletedHabitsDaily(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Param('days', ParseIntPipe) days: number,
   ) {
-    return await this.userHabitsService.getCompletedHabitsDaily(userId, days);
+    return this.userHabitsService.getCompletedHabitsDaily(userId, days);
   }
 
   @Delete('user/:userId/habit/:habitId')
-  async revokeHabit(@Param('userId') userId:number,@Param('habitId') habitId:number):Promise<string>{
-    return await this.userHabitsService.revokeHabit(userId,habitId);
+  @ApiOperation({ summary: 'Revoke an assigned habit from a user.' })
+  revokeHabit(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Param('habitId', ParseIntPipe) habitId: number,
+  ): Promise<{ message: string }> {
+    return this.userHabitsService.revokeHabit(userId, habitId);
   }
-
-
 }

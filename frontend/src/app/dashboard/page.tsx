@@ -1,11 +1,9 @@
 "use client";
 
 import api from "@/lib/axios";
-import { Category } from "@/types/categories";
 import React, { useEffect, useMemo, useState } from "react";
+import CorrelationChart from "../components/charts/CorrelationChart";
 import {
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -18,118 +16,105 @@ import {
   Bar,
 } from "recharts";
 import { fetchDailyCompleted, getBestWorstHabit, getHabitsByUserId, getUserStreaks } from "../actions/user-habits";
-import { toast } from "react-toastify";
+import { toast } from 'react-toastify';
 import { getUserId } from "@/lib/utils";
 import { getTasksByUserId } from "../actions/getUsers";
 import { Task } from "@/types/tasks";
 import { HabitStat, HabitStreak } from "@/types/habits";
-// 1. IMPORT useTheme from the layout file
-import { useTheme } from "@/app/dashboard/layout";
+import { getJournalEntriesByUser } from "../actions/journal";
+import { JournalEntry } from "@/types/journal";
+import { useTheme } from "@/app/dashboard/theme-context";
 
 
 const MOOD_KEY = "growflow_moods_v1";
-// const TASK_KEY = "growflow_tasks_v1"; // No longer needed
-// const THEME_KEY = "growflow_theme_v1"; // No longer needed
 
 const DATE_KEY = (d = new Date()) => d.toISOString().slice(0, 10);
 
-// helper: build dates array n days ago
-function buildPastDates(numDays: number, from = new Date()) {
-  return Array.from({ length: numDays }).map((_, i) => {
-    const d = new Date(from);
-    d.setDate(from.getDate() - (numDays - 1 - i));
-    return d;
-  });
+interface UserHabit {
+  habitId?: number;
+  records?: Record<string, boolean>;
+  [key: string]: unknown;
 }
 
 export default function DashboardPage() {
-  // 2. CONSUME THEME STATE & TOGGLE from Context
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const isDark = theme === "dark";
-
+  const [isRevealed, setIsRevealed] = useState(false);
   const [bestWorstState, setBestWorstState] = useState<{ best: HabitStat | null; worst: HabitStat | null }>({
     best: null,
     worst: null,
   });
-  const [habits, setHabits] = useState<any[]>([]);
-  const [moods, setMoods] = useState<Record<string, string>>({});
+  const [habits, setHabits] = useState<UserHabit[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [mounted, setMounted] = useState(false);
-  const [habitStreaks, setHabitStreaks] = useState<HabitStreak[]>([]);
+  const [, setHabitStreaks] = useState<HabitStreak[]>([]);
   const [dailyCompleted, setDailyCompleted] = useState<{ date: string; completed: number }[]>([]);
-
-  // Removed local theme state and its loading useEffect:
-  // const [theme, setTheme] = useState<"light" | "dark">(...);
-  // useEffect(() => { /* load persisted theme */ }, []);
-
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
+  const [aiRecommendation, setAiRecommendation] = useState<string>("Loading your wellness tip...");
+  const [currentMood, setCurrentMood] = useState<number | null>(null);
 
   useEffect(() => {
-    // Load local data and API data
     async function fetchData() {
       const userId = getUserId();
       if (userId) {
-        // Load Habits
         const h = await getHabitsByUserId(userId);
-        setHabits(h);
+        setHabits(h as unknown as UserHabit[]);
 
-        // Load Moods (still uses localStorage)
-        const m = localStorage.getItem(MOOD_KEY);
-        if (m) setMoods(JSON.parse(m));
+        // Moods stored locally for the emoji selector legacy flow.
+        try {
+          localStorage.getItem(MOOD_KEY);
+        } catch {}
 
-        // Load Tasks
         const t = await getTasksByUserId(userId);
         if (t) setTasks(t);
+
+        try {
+          const entries = await getJournalEntriesByUser(userId);
+          setJournalEntries(entries);
+        } catch {
+          // non-fatal: chart falls back to a flat line.
+        }
       } else {
         toast.error('Token not found');
       }
     }
     fetchData();
-    
-    // Mount animation
     requestAnimationFrame(() => setMounted(true));
   }, []);
 
-  // Get best and worst habit of a user
   useEffect(() => {
     const userId = getUserId();
     const days = 30;
     async function fetchBestWorst() {
       try {
         if (userId) {
-          const bw = await getBestWorstHabit(userId, days)
+          const bw = await getBestWorstHabit(userId, days);
           setBestWorstState(bw);
         }
-      } catch (err) {
+      } catch {
         toast.error("Failed to fetch best/worst habit");
         setBestWorstState({ best: null, worst: null });
       }
     }
-
     if (userId) fetchBestWorst();
   }, []);
 
-
-  // 3. REMOVED Theme useEffect hook, as it's handled by dashboard/layout.tsx now:
-  /*
   useEffect(() => {
-    // apply body background for full-page theme
-    if (typeof document !== "undefined") {
-      if (theme === "dark") {
-        document.body.style.background = "linear-gradient(180deg,#081510,#0f2a21)";
-        document.body.style.color = "#e7f7ee";
-      } else {
-        document.body.style.background = "linear-gradient(180deg,#dff8e3,#bfe7c5)";
-        document.body.style.color = "#123716";
+    async function fetchAiSuggestion() {
+      try {
+        const response = await api.get('/dashboard/summary');
+        const { recommendation, mood } = response.data;
+
+        setAiRecommendation(recommendation);
+        setCurrentMood(mood);
+      } catch (err) {
+        console.error("AI Fetch Error:", err);
+        setAiRecommendation("Stay focused and keep growing!");
       }
     }
-    try {
-      localStorage.setItem(THEME_KEY, theme);
-    } catch (e) { }
-  }, [theme]);
-  */
+    fetchAiSuggestion();
+  }, []);
 
-
-  // Fetch all the streaks
   useEffect(() => {
     async function fetchStreaks() {
       const userId = getUserId();
@@ -138,11 +123,10 @@ export default function DashboardPage() {
       try {
         const streaks = await getUserStreaks(userId);
         setHabitStreaks(streaks);
-      } catch (err) {
+      } catch {
         toast.error("Failed to fetch habit streaks");
       }
     }
-
     fetchStreaks();
   }, []);
 
@@ -150,43 +134,62 @@ export default function DashboardPage() {
     async function fetchData() {
       try {
         const userId = getUserId();
-        const days = 30; // past 30 days, can adjust
+        const days = 30;
         if (!userId) return toast.error("Token not found");
         const data = await fetchDailyCompleted(userId, days);
         setDailyCompleted(data);
-      } catch (err) {
+      } catch {
         toast.error("Failed to fetch daily completed habits");
       }
     }
     fetchData();
   }, []);
 
-
-
   const today = DATE_KEY();
 
   // ---------- Derived analytics ----------
-
-  // productivity: habits completed today + tasks completed
   const completedHabitsToday = habits.filter((h) => h.records?.[today]).length;
   const completedTasksTotal = tasks.filter((t) => t.taskStatus === "completed").length;
   const totalItems = habits.length + tasks.length;
   const totalCompleted = completedHabitsToday + completedTasksTotal;
   const productivityScore = totalItems ? Math.round((totalCompleted / totalItems) * 100) : 0;
 
-  // last 7 and last 30 days arrays (labels + values)
-  const dailyLast7 = dailyCompleted.slice(-7).map(d => ({
-    day: d.date.slice(5), // MM-DD
-    completed: d.completed,
-  }));
+  // Focus estimate: 25 min per task done today + 10 min per habit completion.
+  const tasksCompletedToday = tasks.filter((t) => {
+    if (!t.completedAt || t.taskStatus !== "completed") return false;
+    return DATE_KEY(new Date(t.completedAt)) === today;
+  }).length;
+  const focusMinutesToday =
+    tasksCompletedToday * 25 + completedHabitsToday * 10;
 
-  const dailyLast30 = dailyCompleted.map(d => ({
+  const dailyLast7 = dailyCompleted.slice(-7).map(d => ({
     day: d.date.slice(5),
     completed: d.completed,
   }));
+  const chartLabels = dailyLast7.map(d => d.day);
+  const habitValues = dailyLast7.map(d => d.completed);
 
+  // Per-day mood from journal entries: average sentiment per day, normalized 0-10.
+  const moodByDay = useMemo(() => {
+    const buckets: Record<string, number[]> = {};
+    for (const e of journalEntries) {
+      const key = new Date(e.createdAt).toISOString().slice(5, 10);
+      if (e.sentimentScore === null || e.sentimentScore === undefined) continue;
+      const raw = e.sentimentScore;
+      const norm =
+        raw >= -1 && raw <= 1 ? ((raw + 1) / 2) * 10 : (raw / 100) * 10;
+      (buckets[key] ??= []).push(norm);
+    }
+    return buckets;
+  }, [journalEntries]);
+  const moodValues = dailyLast7.map((d) => {
+    const samples = moodByDay[d.day];
+    if (samples?.length) {
+      return Math.round(samples.reduce((s, n) => s + n, 0) / samples.length);
+    }
+    return currentMood ?? 0;
+  });
 
-  // task pie breakdown
   const taskCounts = useMemo(() => {
     const todo = tasks.filter((t) => t.taskStatus === "to_do").length;
     const inProg = tasks.filter((t) => t.taskStatus === "in_progress").length;
@@ -200,7 +203,6 @@ export default function DashboardPage() {
     { name: "Completed", value: taskCounts.done },
   ];
 
-  // task velocity: tasks completed in each of last 4 weeks
   const taskVelocityData = useMemo(() => {
     const now = new Date();
     const weeks = [];
@@ -222,10 +224,8 @@ export default function DashboardPage() {
     return weeks;
   }, [tasks]);
 
-
-  // weekly / monthly summaries
   const weeklySummary = useMemo(() => {
-    const last7Keys = dailyLast7.map((d) => d.day); // Using available daily data
+    const last7Keys = dailyLast7.map((d) => d.day);
     const habitsCompletedUnique = habits.filter((h) => last7Keys.some((k) => h.records?.[k])).length;
     const tasksCompletedWeek = tasks.filter((t) => {
       if (!t.completedAt) return false;
@@ -235,68 +235,17 @@ export default function DashboardPage() {
     return { habitsCompletedUnique, tasksCompletedWeek };
   }, [habits, tasks, dailyLast7]);
 
-  const monthlySummary = useMemo(() => {
-    const last30Keys = dailyLast30.map((d) => d.day); // Using available daily data
-    const habitsCompletedUnique = habits.filter((h) => last30Keys.some((k) => h.records?.[k])).length;
-    const tasksCompletedMonth = tasks.filter((t) => {
-      if (!t.completedAt) return false;
-      const k = DATE_KEY(new Date(t.completedAt));
-      return dailyLast30.some(d => d.day === k.slice(5));
-    }).length;
-    return { habitsCompletedUnique, tasksCompletedMonth };
-  }, [habits, tasks, dailyLast30]);
-
-
-  // small UI styles (inline + CSS block for animations / hover)
   const palette = {
     lightBg: "linear-gradient(180deg,#dff8e3,#bfe7c5)",
     lightCard: "#ffffff",
     lightAccent: "#163b25",
-    darkBg: "linear-gradient(180deg,#06130f,#0f2a21)", // green dark gradient
+    darkBg: "linear-gradient(180deg,#06130f,#0f2a21)",
     darkCard: "#0f241f",
     darkAccent: "#8fe8b2",
   };
 
-  const pageStyle: React.CSSProperties = {
-    padding: 24,
-    transition: "background 350ms ease, color 350ms ease, transform 400ms ease",
-    transform: mounted ? "translateY(0) scale(1)" : "translateY(6px) scale(0.995)",
-  };
-
-  const headerStyle: React.CSSProperties = {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 18,
-  };
-
-  const h1Style: React.CSSProperties = {
-    fontSize: 32,
-    margin: 0,
-    color: isDark ? palette.darkAccent : palette.lightAccent,
-  };
-
-  const smallMuted: React.CSSProperties = {
-    fontSize: 13,
-    color: isDark ? "#a8d9bb" : "#2f6b45",
-  };
-
-  const cardBase: React.CSSProperties = {
-    background: isDark ? palette.darkCard : palette.lightCard,
-    borderRadius: 14,
-    padding: 16,
-    boxShadow: isDark
-      ? "0 6px 18px rgba(0,0,0,0.5)"
-      : "0 10px 30px rgba(12,70,36,0.08)",
-    border: `1px solid ${isDark ? "rgba(255,255,255,0.03)" : "rgba(19,55,22,0.06)"}`,
-    transition: "transform 180ms ease, box-shadow 180ms ease, background 300ms ease",
-  };
-
   const greenAccent = isDark ? "#aef0c9" : "#163b25";
-  const greenAccentSoft = isDark ? "rgba(174,240,201,0.08)" : "rgba(21,82,42,0.06)";
 
-  // small helper for animated glow
   const productivityCircleStyle: React.CSSProperties = {
     margin: "12px auto",
     width: 128,
@@ -308,285 +257,297 @@ export default function DashboardPage() {
     justifyContent: "center",
     fontSize: 28,
     fontWeight: 700,
-    color: isDark ? palette.darkAccent : palette.lightAccent, // FIX: Ensure text is visible
+    color: isDark ? palette.darkAccent : palette.lightAccent,
     background: isDark ? "rgba(20,70,50,0.06)" : palette.lightCard,
     boxShadow: isDark ? `0 0 30px rgba(174,240,201,0.06)` : `0 6px 20px rgba(22,59,34,0.08)`,
     transition: "box-shadow 300ms ease, transform 200ms ease",
   };
 
-  // small card hover style via inline onMouse events (to keep no external CSS required)
-  function useHoverTransform() {
-    const [hover, setHover] = useState(false);
-    return {
-      onMouseEnter: () => setHover(true),
-      onMouseLeave: () => setHover(false),
-      style: { transform: hover ? "translateY(-6px)" : "translateY(0)", boxShadow: hover ? "0 14px 40px rgba(19,55,22,0.12)" : undefined },
-    };
-  }
+  const wrapperStyle: React.CSSProperties = {
+    transition: "transform 400ms ease",
+    transform: mounted ? "translateY(0) scale(1)" : "translateY(6px) scale(0.995)",
+  };
 
-  // ---------- Render ----------
   return (
-    <div
-      style={{
-        ...(pageStyle as any),
-        minHeight: "100vh",
-        background: isDark ? palette.darkBg : palette.lightBg,
-      }}
-    >
-      {/* internal CSS for small animations (keyframes) */}
-      <style>{`
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(6px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .fade-up { animation: fadeInUp 480ms ease both; }
-        .muted { opacity: 0.9; }
-        .btn {
-          cursor: pointer;
-          border-radius: 10px;
-          padding: 8px 12px;
-          font-weight: 600;
-          border: none;
-        }
-        .glass {
-          background: ${isDark ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.7)"};
-          backdrop-filter: blur(6px);
-        }
-      `}</style>
-
-      <div style={headerStyle} className="fade-up">
+    <div className="gf-fade-up mx-auto max-w-7xl" style={wrapperStyle}>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 style={h1Style}>Dashboard</h1>
-          <div style={smallMuted}>Overview — {new Date().toLocaleDateString()}</div>
+          <h1 className="gf-h1" style={{ fontFamily: "'Lora', serif", color: isDark ? palette.darkAccent : palette.lightAccent }}>
+            Dashboard
+          </h1>
+          <div className="gf-muted text-sm">
+            Overview — {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
+          </div>
         </div>
+        <span className="gf-chip">
+          <span className="h-2 w-2 rounded-full bg-current" />
+          Live
+        </span>
+      </div>
 
-        {/* 4. REMOVED THEME TOGGLE BUTTON FROM THE PAGE HEADER */}
-        {/*
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 12, color: isDark ? "#bfead0" : "#2f6b45" }}>Theme</div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6 }}>
-              <button
-                onClick={toggleTheme}
-                className="btn"
-                style={{
-                  background: isDark ? "linear-gradient(90deg,#153a2f,#0f1f17)" : "linear-gradient(90deg,#2c7a4a,#163b25)",
-                  color: "#fff",
-                  boxShadow: isDark ? "0 6px 18px rgba(0,0,0,0.5)" : "0 8px 24px rgba(15,50,25,0.18)",
-                }}
-                title="Toggle theme"
-              >
-                {isDark ? "🌿 Green Light" : "🌙 Green Dark"}
-              </button>
+      <div
+        className="gf-card gf-fade-up mb-6 flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:gap-5"
+        style={{
+          background: isDark
+            ? "linear-gradient(135deg,#0f241f 0%, #06130f 100%)"
+            : "linear-gradient(135deg,#ffffff 0%, #f0fff4 100%)",
+          border: `2px solid ${isDark ? "#8fe8b2" : "#163b25"}`,
+        }}
+      >
+        <div className="text-4xl shrink-0">💡</div>
+        <div className="min-w-0 flex-1">
+          <div
+            className="text-xs font-bold uppercase tracking-wider"
+            style={{ color: greenAccent }}
+          >
+            GrowFlow AI Recommendation
+          </div>
+          <p
+            className="mt-1 text-base sm:text-lg font-medium leading-relaxed transition-all duration-500"
+            style={{
+              color: isDark ? "#e6ffef" : "#123716",
+              filter: isRevealed ? "none" : "blur(6px)",
+              userSelect: isRevealed ? "auto" : "none",
+            }}
+          >
+            {aiRecommendation}
+          </p>
+          {!isRevealed && (
+            <button
+              onClick={() => setIsRevealed(true)}
+              className="gf-btn gf-btn-primary mt-3 !py-1.5 !px-3 text-xs"
+            >
+              Reveal daily tip
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="gf-card gf-card-hover gf-fade-up p-5">
+          <div className="text-sm font-bold" style={{ color: isDark ? "#cfeed8" : "#2f6b45" }}>
+            Productivity
+          </div>
+          <div className="gf-muted mt-1 text-xs">Combined habits + tasks</div>
+          <div className="mt-4 flex justify-center">
+            <div style={productivityCircleStyle}>
+              <div className="text-center leading-none">
+                <div className="text-2xl sm:text-3xl font-bold">{productivityScore}%</div>
+                <div className="mt-1 text-xs opacity-80">
+                  {totalItems ? `${totalCompleted}/${totalItems}` : "0/0"}
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        */}
+
+        <div className="gf-card gf-card-hover gf-fade-up p-5">
+          <div className="text-sm font-bold" style={{ color: isDark ? "#cfeed8" : "#2f6b45" }}>
+            How are you feeling?
+          </div>
+          <div className="mt-5 flex justify-between px-1">
+            {["\u{1F622}", "\u{1F610}", "\u{1F642}", "\u{1F60A}", "\u{1F929}"].map((emoji, index) => {
+              return (
+                <button
+                  key={index}
+                  onClick={() => {
+                    toast.success("Mood recorded!", { icon: () => <span>{emoji}</span> });
+                  }}
+                  aria-label={`Set mood ${index + 1} of 5`}
+                  className="text-2xl sm:text-3xl transition-transform hover:scale-125 focus:outline-none focus:scale-125"
+                >
+                  {emoji}
+                </button>
+              );
+            })}
+          </div>
+          <div
+            className="mt-4 text-center text-xs"
+            style={{ color: isDark ? "#9fdab0" : "#3e6f4a" }}
+          >
+            Tap an emoji to update your wellness profile.
+          </div>
+        </div>
+
+        <div className="gf-card gf-card-hover gf-fade-up p-5 sm:col-span-2 lg:col-span-1">
+          <div className="text-sm font-bold" style={{ color: isDark ? "#cfeed8" : "#2f6b45" }}>
+            Focus
+          </div>
+          <div
+            className="mt-3 text-center text-4xl sm:text-5xl font-bold"
+            style={{ color: isDark ? palette.darkAccent : palette.lightAccent }}
+          >
+            {focusMinutesToday}m
+          </div>
+          <div
+            className="mt-2 text-center text-xs"
+            style={{ color: isDark ? "#9fdab0" : "#3e6f4a" }}
+          >
+            Estimated focus today
+            <br />
+            <span className="opacity-70">
+              {tasksCompletedToday} task{tasksCompletedToday === 1 ? "" : "s"}
+              {" · "}
+              {completedHabitsToday} habit{completedHabitsToday === 1 ? "" : "s"}
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* TOP ROW */}
-      <div style={{ display: "flex", gap: 20, marginTop: 18, flexWrap: "wrap" }}>
-        <div style={{ ...cardBase, width: 300 }} className="fade-up">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <div style={{ fontSize: 14, color: isDark ? "#cfeed8" : "#2f6b45", fontWeight: 700 }}>Productivity</div>
-              <div style={{ fontSize: 12, color: isDark ? "#bfead0" : "#3e6f4a", marginTop: 6 }}>Combined habits + tasks</div>
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="gf-card gf-fade-up p-5 lg:col-span-2 min-h-[420px] flex flex-col">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="text-base font-bold" style={{ color: greenAccent }}>
+              Mood &amp; Productivity
             </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 12, color: isDark ? "#9fdab0" : "#2a5b3a" }}>Today</div>
-              <div style={{ fontSize: 13, color: isDark ? "#dff9e8" : "#123716", fontWeight: 700 }}>
-                {completedHabitsToday} habits • {completedTasksTotal} tasks
+            <span className="gf-muted text-xs">Last 7 days</span>
+          </div>
+          <div className="flex-1 min-h-[320px]">
+            <CorrelationChart
+              labels={chartLabels}
+              habitData={habitValues}
+              moodData={moodValues}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <div className="gf-card gf-card-hover gf-fade-up p-5">
+            <div className="text-sm font-bold" style={{ color: greenAccent }}>
+              Weekly summary
+            </div>
+            <div className="mt-3 flex items-center justify-between">
+              <div>
+                <div className="gf-muted text-xs">Habits touched</div>
+                <div
+                  className="text-xl font-bold"
+                  style={{ color: isDark ? palette.darkAccent : palette.lightAccent }}
+                >
+                  {weeklySummary.habitsCompletedUnique}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="gf-muted text-xs">Tasks done</div>
+                <div
+                  className="text-xl font-bold"
+                  style={{ color: isDark ? palette.darkAccent : palette.lightAccent }}
+                >
+                  {weeklySummary.tasksCompletedWeek}
+                </div>
               </div>
             </div>
           </div>
 
-          <div
-            style={{ ...productivityCircleStyle, marginTop: 12 }}
-            onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.03)")}
-            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-          >
-            <div style={{ textAlign: "center", lineHeight: 1 }}>
-              <div style={{ fontSize: 28 }}>{productivityScore}%</div>
-              <div style={{ fontSize: 12, marginTop: 4 }}>{totalItems ? `${totalCompleted}/${totalItems}` : "0/0"}</div>
+          <div className="gf-card gf-card-hover gf-fade-up p-5">
+            <div className="text-sm font-bold" style={{ color: greenAccent }}>
+              Lifestyle balance
+            </div>
+            <div className="h-[180px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <RCPieChart>
+                  <Pie
+                    data={[
+                      { name: "Health", value: 40 },
+                      { name: "Work", value: 30 },
+                      { name: "Mindfulness", value: 30 },
+                    ]}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={45}
+                    outerRadius={70}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    <Cell fill="#1fbf75" />
+                    <Cell fill="#60d394" />
+                    <Cell fill="#9b59b6" />
+                  </Pie>
+                  <Tooltip />
+                </RCPieChart>
+              </ResponsiveContainer>
             </div>
           </div>
-        </div>
 
-        <div style={{ ...cardBase, width: 240 }} className="fade-up">
-          <div style={{ fontSize: 14, fontWeight: 700, color: isDark ? "#cfeed8" : "#2f6b45" }}>Today's Mood</div>
-          <div style={{ fontSize: 44, textAlign: "center", marginTop: 12, color: isDark ? palette.darkAccent : palette.lightAccent }}>{moods[today] || "—"}</div>
-          <div style={{ fontSize: 12, marginTop: 6, color: isDark ? "#9fdab0" : "#3e6f4a", textAlign: "center" }}>
-            Mood recorded: {moods[today] ? "Yes" : "No"}
-          </div>
-        </div>
-
-        <div style={{ ...cardBase, width: 260 }} className="fade-up">
-          <div style={{ fontSize: 14, fontWeight: 700, color: isDark ? "#cfeed8" : "#2f6b45" }}>Focus</div>
-          <div style={{ fontSize: 36, textAlign: "center", marginTop: 12, color: isDark ? palette.darkAccent : palette.lightAccent }}>{/* dynamic later */} {42}m</div>
-          <div style={{ fontSize: 12, color: isDark ? "#9fdab0" : "#3e6f4a", marginTop: 8, textAlign: "center" }}>
-            Focus minutes today
+          <div className="gf-card gf-card-hover gf-fade-up p-5">
+            <div className="text-sm font-bold" style={{ color: greenAccent }}>
+              Best / worst habit (30d)
+            </div>
+            <div className="mt-2 space-y-1.5">
+              <div className="text-sm gf-muted">
+                Best:{" "}
+                <span
+                  className="ml-1 font-bold"
+                  style={{ color: isDark ? palette.darkAccent : palette.lightAccent }}
+                >
+                  {bestWorstState.best
+                    ? `${bestWorstState.best.habitName} (${Math.round(
+                        bestWorstState.best.percentage * 100
+                      )}%)`
+                    : "—"}
+                </span>
+              </div>
+              <div className="text-sm gf-muted">
+                Worst:{" "}
+                <span
+                  className="ml-1 font-bold"
+                  style={{ color: isDark ? palette.darkAccent : palette.lightAccent }}
+                >
+                  {bestWorstState.worst
+                    ? `${bestWorstState.worst.habitName} (${Math.round(
+                        bestWorstState.worst.percentage * 100
+                      )}%)`
+                    : "—"}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* midsize row: trend + quick stats */}
-      <div style={{ display: "flex", gap: 20, marginTop: 28, alignItems: "stretch", flexWrap: "wrap" }}>
-        {/* Habit trend (7 days) */}
-        <div style={{ ...cardBase, flex: 1, minWidth: 360 }} className="fade-up">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: greenAccent }}>Habit Completion — 7d</div>
-            <div style={smallMuted}>Recent activity</div>
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="gf-card gf-fade-up p-5">
+          <div className="mb-3 text-sm font-bold" style={{ color: greenAccent }}>
+            Task status
           </div>
-
-          <div style={{ height: 200 }}>
-            <ResponsiveContainer>
-              <LineChart data={dailyLast7}>
-                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.03)" : "#e8f3ea"} />
-                <XAxis dataKey="day" stroke={isDark ? "#a7e8c6" : "#2f6b45"} />
-                <YAxis allowDecimals={false} stroke={isDark ? "#9fdab0" : "#2f6b45"} />
-                <Tooltip
-                  wrapperStyle={{ background: isDark ? "#0b221a" : "#fff" }}
-                  contentStyle={{ color: isDark ? "#e6ffef" : "#123716" }}
-                />
-                <Line type="monotone" dataKey="completed" stroke={greenAccent} strokeWidth={3} dot={{ r: 4 }} />
-              </LineChart>
-
+          <div className="h-[240px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <RCPieChart>
+                <Pie
+                  data={taskPieData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={80}
+                  paddingAngle={4}
+                  dataKey="value"
+                  label
+                >
+                  <Cell fill="#fbbf24" />
+                  <Cell fill="#3498db" />
+                  <Cell fill="#1fbf75" />
+                </Pie>
+                <Tooltip />
+              </RCPieChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Quick summary column */}
-        <div style={{ width: 360, display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ ...cardBase }} className="fade-up">
-            <div style={{ fontSize: 15, fontWeight: 700, color: greenAccent }}>Weekly Summary</div>
-            <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between" }}>
-              <div>
-                <div style={{ fontSize: 12, color: isDark ? "#bfead0" : "#3e6f4a" }}>Habits touched</div>
-                <div style={{ fontWeight: 700, fontSize: 18, color: isDark ? palette.darkAccent : palette.lightAccent }}>{weeklySummary.habitsCompletedUnique}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, color: isDark ? "#bfead0" : "#3e6f4a" }}>Tasks done</div>
-                <div style={{ fontWeight: 700, fontSize: 18, color: isDark ? palette.darkAccent : palette.lightAccent }}>{weeklySummary.tasksCompletedWeek}</div>
-              </div>
-            </div>
+        <div className="gf-card gf-fade-up p-5">
+          <div className="mb-3 text-sm font-bold" style={{ color: greenAccent }}>
+            Task velocity (4 weeks)
           </div>
-
-          <div style={{ ...cardBase }} className="fade-up">
-            <div style={{ fontSize: 15, fontWeight: 700, color: greenAccent }}>Monthly Summary</div>
-            <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between" }}>
-              <div>
-                <div style={{ fontSize: 12, color: isDark ? "#bfead0" : "#3e6f4a" }}>Habits touched</div>
-                <div style={{ fontWeight: 700, fontSize: 18, color: isDark ? palette.darkAccent : palette.lightAccent }}>{monthlySummary.habitsCompletedUnique}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, color: isDark ? "#bfead0" : "#3e6f4a" }}>Tasks done</div>
-                <div style={{ fontWeight: 700, fontSize: 18, color: isDark ? palette.darkAccent : palette.lightAccent }}>{monthlySummary.tasksCompletedMonth}</div>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ ...cardBase }} className="fade-up">
-            <div style={{ fontSize: 15, fontWeight: 700, color: greenAccent }}>Best / Worst Habit (30d)</div>
-            <div style={{ marginTop: 8 }}>
-              <div style={{ fontSize: 13, color: isDark ? "#bfead0" : "#3e6f4a" }}>
-                Best:
-                <span style={{ fontWeight: 700, marginLeft: 8, color: isDark ? palette.darkAccent : palette.lightAccent }}>{bestWorstState.best ? `${bestWorstState.best.habitName} (${Math.round(bestWorstState.best.percentage * 100)}%)` : "—"}</span>
-              </div>
-              <div style={{ marginTop: 6, fontSize: 13, color: isDark ? "#bfead0" : "#3e6f4a" }}>
-                Worst:
-                <span style={{ fontWeight: 700, marginLeft: 8, color: isDark ? palette.darkAccent : palette.lightAccent }}>{bestWorstState.worst ? `${bestWorstState.worst.habitName} (${Math.round(bestWorstState.worst.percentage * 100)}%)` : "—"}</span>
-              </div>
-            </div>
+          <div className="h-[240px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={taskVelocityData}>
+                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#1f4d33" : "#d2e8d9"} />
+                <XAxis dataKey="week" stroke={isDark ? "#9ed8bb" : "#163b25"} />
+                <YAxis stroke={isDark ? "#9ed8bb" : "#163b25"} />
+                <Tooltip />
+                <Bar dataKey="completed" fill="#1fbf75" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
-      </div>
-
-      {/* Task breakdown + streaks + velocity */}
-      <div style={{ display: "flex", gap: 24, marginTop: 28, flexWrap: "wrap" }}>
-        <div style={{ ...cardBase, flex: 1, minWidth: 380 }} className="fade-up">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: greenAccent }}>Tasks: completion breakdown</div>
-            <div style={smallMuted}>Live from local storage</div>
-          </div>
-
-          <div style={{ display: "flex", gap: 12, marginTop: 12, alignItems: "center" }}>
-            <div style={{ width: 280, height: 280 }}>
-              <RCPieChart width={280} height={280}>
-                <Pie data={taskPieData} cx={140} cy={140} outerRadius={100} label dataKey="value" style={{ fill: isDark ? palette.darkAccent : palette.lightAccent }}>
-                  <Cell fill="#8fc48f" />
-                  <Cell fill="#4f8b4f" />
-                  <Cell fill={greenAccent} />
-                </Pie>
-              </RCPieChart>
-            </div>
-
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                <div style={{ width: 10, height: 10, background: "#8fc48f", borderRadius: 3 }} />
-                <div style={{ fontWeight: 700 }}>{taskCounts.todo} To Do</div>
-              </div>
-              <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8 }}>
-                <div style={{ width: 10, height: 10, background: "#4f8b4f", borderRadius: 3 }} />
-                <div style={{ fontWeight: 700 }}>{taskCounts.inProg} In progress</div>
-              </div>
-              <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8 }}>
-                <div style={{ width: 10, height: 10, background: greenAccent, borderRadius: 3 }} />
-                <div style={{ fontWeight: 700 }}>{taskCounts.done} Completed</div>
-              </div>
-
-              <div style={{ marginTop: 16, fontSize: 13, color: isDark ? "#bfead0" : "#3e6f4a" }}>
-                Tip: move cards between columns to update statuses (if your tasks UI supports it).
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ width: 420 }} className="fade-up">
-          <div style={{ ...cardBase, marginBottom: 14 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: greenAccent }}>Habit Streaks</div>
-            <div style={{ marginTop: 10 }}>
-              {habitStreaks.length === 0 && <div style={smallMuted}>No habits yet.</div>}
-              {habitStreaks.slice(0, 6).map((h, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    padding: "8px 0",
-                    borderBottom: `1px dashed ${isDark ? "rgba(255,255,255,0.02)" : "rgba(19,55,22,0.04)"}`,
-                  }}
-                >
-                  <div style={{ fontWeight: 700, color: isDark ? "#e6ffef" : "#123716" }}>{h.habitName}</div>
-                  <div style={{ color: isDark ? "#bfead0" : "#3e6f4a" }}>
-                    {h.currentStreak} / {h.longestStreak} d
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ ...cardBase }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: greenAccent }}>Task Velocity (4 weeks)</div>
-            <div style={{ height: 180, marginTop: 8 }}>
-              <ResponsiveContainer>
-                <BarChart data={taskVelocityData}>
-                  <XAxis dataKey="week" tick={{ fontSize: 12 }} />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
-                  <Bar dataKey="completed" fill={greenAccent} radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div style={{ marginTop: 8, fontSize: 13, color: isDark ? "#bfead0" : "#3e6f4a" }}>
-              Completed tasks per week (last 4 weeks)
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer notes / small CTA */}
-      <div style={{ marginTop: 28, textAlign: "center", color: isDark ? "#9fdab0" : "#2f6b45" }}>
-        Built with ❤️ — Green theme active. Dark-mode preserves green accents.
       </div>
     </div>
   );

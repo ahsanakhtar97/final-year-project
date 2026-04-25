@@ -2,198 +2,355 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import React, { useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import React, { useRef, useState } from "react";
+import {
+  Menu,
+  X,
+  Sparkles,
+  Target,
+  BookOpen,
+  ArrowRight,
+} from "lucide-react";
 
 export default function Home() {
   const router = useRouter();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const homeRef = useRef<HTMLDivElement>(null);
   const aboutRef = useRef<HTMLDivElement>(null);
+  const featuresRef = useRef<HTMLDivElement>(null);
   const contactRef = useRef<HTMLDivElement>(null);
 
-  const scrollToSection = (ref: React.RefObject<HTMLDivElement>) => {
-    ref.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setMobileOpen(false);
   };
+
+  const navLinks: { label: string; ref: React.RefObject<HTMLDivElement | null> }[] = [
+    { label: "Home", ref: homeRef },
+    { label: "Features", ref: featuresRef },
+    { label: "About", ref: aboutRef },
+    { label: "Contact", ref: contactRef },
+  ];
 
   return (
     <div
-      className="w-full h-screen overflow-y-scroll scroll-smooth snap-y snap-mandatory font-serif 
-      relative bg-gradient-to-br from-[#021a10] via-[#06361f] to-[#0c4a2a]"
+      className="relative w-full min-h-screen overflow-x-hidden"
+      style={{
+        background:
+          "linear-gradient(135deg,#021a10 0%,#06361f 50%,#0c4a2a 100%)",
+        fontFamily: "'Inter', system-ui, sans-serif",
+      }}
     >
-      {/* Glow Effects */}
-      <div className="absolute w-[500px] h-[500px] bg-[rgba(72,255,187,0.15)] blur-[140px] top-[-200px] left-[-200px]"></div>
-      <div className="absolute w-[500px] h-[500px] bg-[rgba(80,255,200,0.12)] blur-[140px] bottom-[-200px] right-[-200px]"></div>
+      {/* Ambient animated glows */}
+      <motion.div
+        animate={{ x: [0, 100, -50, 0], y: [0, -80, 50, 0], scale: [1, 1.2, 0.9, 1] }}
+        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        aria-hidden
+        className="pointer-events-none fixed -top-48 -left-48 h-[500px] w-[500px] rounded-full"
+        style={{ background: "rgba(72,255,187,0.15)", filter: "blur(140px)" }}
+      />
+      <motion.div
+        animate={{ x: [0, -120, 80, 0], y: [0, 100, -60, 0], rotate: [0, 90, 0] }}
+        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+        aria-hidden
+        className="pointer-events-none fixed -bottom-48 -right-48 h-[500px] w-[500px] rounded-full"
+        style={{ background: "rgba(80,255,200,0.12)", filter: "blur(140px)" }}
+      />
 
-      {/* ---------------- NAVBAR ---------------- */}
+      {/* Navbar */}
       <motion.nav
         initial={{ y: -25, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6 }}
-        className="fixed top-0 w-full z-50 
-        bg-[rgba(10,45,30,0.7)] backdrop-blur-xl border-b border-white/10 
-        py-3 px-6 
-        grid grid-cols-3 place-items-center"
+        className="fixed top-0 z-50 w-full border-b border-white/10 px-4 py-3 sm:px-6"
+        style={{
+          background: "rgba(10,45,30,0.7)",
+          backdropFilter: "blur(18px)",
+          WebkitBackdropFilter: "blur(18px)",
+        }}
       >
-        {/* Left: Logo */}
-        <div className="flex items-center gap-2 justify-start w-full">
-          <Image
-            src="/logo3.png"
-            width={90}
-            height={90}
-            alt="GrowFlow"
-            className="object-contain"
-          />
-          <span className="text-[#c7ffdc] text-2xl font-bold"></span>
-        </div>
-
-        {/* Center: Nav Links */}
-        <div className="hidden md:flex gap-10 text-lg font-semibold text-[#c7ffdc] justify-center w-full">
-          <motion.span
-            whileHover={{ scale: 1.1 }}
+        <div className="mx-auto flex max-w-7xl items-center justify-between">
+          <button
             onClick={() => scrollToSection(homeRef)}
-            className="cursor-pointer hover:text-[#9df2c8]"
+            className="flex items-center gap-2"
+            aria-label="Go to top"
           >
-            Home
-          </motion.span>
-          <motion.span
-            whileHover={{ scale: 1.1 }}
-            onClick={() => scrollToSection(aboutRef)}
-            className="cursor-pointer hover:text-[#9df2c8]"
-          >
-            About
-          </motion.span>
-          <motion.span
-            whileHover={{ scale: 1.1 }}
-            onClick={() => scrollToSection(contactRef)}
-            className="cursor-pointer hover:text-[#9df2c8]"
-          >
-            Contact
-          </motion.span>
+            <Image
+              src="/logo3.png"
+              width={56}
+              height={56}
+              alt="GrowFlow"
+              className="h-10 w-10 sm:h-12 sm:w-12 object-contain transition-transform duration-300 hover:rotate-12"
+            />
+            <span
+              className="text-lg sm:text-xl font-bold tracking-tight text-[#c7ffdc]"
+              style={{ fontFamily: "'Lora', serif" }}
+            >
+              GrowFlow
+            </span>
+          </button>
+
+          {/* Desktop links */}
+          <div className="hidden md:flex items-center gap-8 text-base font-semibold text-[#c7ffdc]">
+            {navLinks.map(({ label, ref }) => (
+              <motion.button
+                key={label}
+                whileHover={{ y: -2 }}
+                onClick={() => scrollToSection(ref)}
+                className="hover:text-[#9df2c8] transition-colors"
+              >
+                {label}
+              </motion.button>
+            ))}
+          </div>
+
+          {/* Login + mobile toggle */}
+          <div className="flex items-center gap-2">
+            <motion.button
+              whileHover={{
+                scale: 1.04,
+                boxShadow: "0 0 20px rgba(31,191,117,0.4)",
+              }}
+              whileTap={{ scale: 0.96 }}
+              onClick={() => router.push("/login")}
+              className="rounded-xl px-4 py-2 sm:px-6 sm:py-2 text-sm sm:text-base font-bold text-[#012016] shadow-lg"
+              style={{ background: "linear-gradient(145deg,#1fbf75,#108a54)" }}
+            >
+              Login
+            </motion.button>
+            <button
+              type="button"
+              aria-label="Toggle menu"
+              onClick={() => setMobileOpen((o) => !o)}
+              className="md:hidden rounded-lg p-2 text-[#c7ffdc] hover:bg-white/10 transition-colors"
+            >
+              {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
+          </div>
         </div>
 
-        {/* Right: Login Button */}
-        <div className="flex justify-end w-full">
-          <motion.button
-            whileHover={{ scale: 1.06 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => router.push("/login")}
-            className="px-6 py-2 rounded-xl font-bold text-[#012016]
-            bg-gradient-to-br from-[#1fbf75] to-[#108a54] shadow-lg"
-          >
-            Login
-          </motion.button>
-        </div>
+        {/* Mobile menu */}
+        <AnimatePresence>
+          {mobileOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="md:hidden overflow-hidden"
+            >
+              <div className="mt-3 flex flex-col gap-1 rounded-xl border border-white/10 bg-[rgba(6,25,18,0.9)] p-2">
+                {navLinks.map(({ label, ref }) => (
+                  <button
+                    key={label}
+                    onClick={() => scrollToSection(ref)}
+                    className="rounded-lg px-4 py-2.5 text-left text-base font-medium text-[#c7ffdc] hover:bg-white/10 transition-colors"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.nav>
 
-      {/* ---------------- HOME SECTION ---------------- */}
+      {/* Hero */}
       <motion.section
         ref={homeRef}
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.4 }}
         transition={{ duration: 0.8 }}
-        className="snap-start h-screen flex flex-col items-center justify-center text-center px-6"
+        className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 text-center pt-24"
       >
-        <h1 className="text-4xl md:text-6xl font-bold text-[#c7ffdc] drop-shadow-lg">
-          Grow Within, Flow Beyond
-        </h1>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.6 }}
+          className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs sm:text-sm text-[#c7ffdc]/90"
+        >
+          <Sparkles size={14} />
+          Your daily space for mindful growth
+        </motion.div>
 
-        <p className="text-lg md:text-xl text-[#9df2c8] mt-4 max-w-lg leading-relaxed">
-          A space to reflect, recharge, and realign with yourself 🌿
+        <motion.h1
+          animate={{ y: [0, -10, 0] }}
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          className="text-4xl sm:text-6xl md:text-7xl font-bold leading-tight text-[#c7ffdc] drop-shadow-lg"
+          style={{ fontFamily: "'Lora', serif", letterSpacing: "-0.02em" }}
+        >
+          Grow Within,{" "}
+          <span className="bg-gradient-to-r from-[#60d394] to-[#9df2c8] bg-clip-text text-transparent">
+            Flow Beyond
+          </span>
+        </motion.h1>
+
+        <p className="mt-6 max-w-xl text-base sm:text-lg md:text-xl leading-relaxed text-[#9df2c8]/90 opacity-90">
+          A space to reflect, recharge, and realign with yourself. Track habits,
+          log moods, and let AI guide your growth. 🌿
         </p>
 
-        <motion.button
-          whileHover={{ scale: 1.08 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => router.push("/register")}
-          className="mt-6 bg-gradient-to-br from-[#1fbf75] to-[#108a54] 
-          text-[#012016] px-8 py-4 rounded-2xl shadow-xl font-bold text-lg"
-        >
-          Get Started
-        </motion.button>
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => router.push("/register")}
+            className="group inline-flex items-center gap-2 rounded-2xl px-7 py-3.5 text-base font-bold text-[#012016] shadow-xl"
+            style={{ background: "linear-gradient(145deg,#1fbf75,#108a54)" }}
+          >
+            Get started
+            <ArrowRight
+              size={18}
+              className="transition-transform group-hover:translate-x-1"
+            />
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => scrollToSection(featuresRef)}
+            className="rounded-2xl border border-white/15 bg-white/5 px-7 py-3.5 text-base font-semibold text-[#c7ffdc] backdrop-blur hover:bg-white/10 transition-colors"
+          >
+            Explore features
+          </motion.button>
+        </div>
       </motion.section>
 
-      {/* ---------------- ABOUT SECTION ---------------- */}
+      {/* Features */}
       <motion.section
-        ref={aboutRef}
+        ref={featuresRef}
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.2 }}
-        transition={{ duration: 0.8 }}
-        className="snap-start min-h-screen py-28 px-6"
+        viewport={{ once: true, amount: 0.3 }}
+        transition={{ duration: 0.7 }}
+        className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 pb-24"
       >
-        <h1 className="text-center text-4xl md:text-5xl font-bold text-[#c7ffdc] drop-shadow-lg">
-          About GrowFlow
-        </h1>
+        <div className="mx-auto max-w-2xl text-center">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-[#c7ffdc]/90">
+            <Sparkles size={14} />
+            Everything you need to grow
+          </div>
+          <h2
+            className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#c7ffdc] tracking-tight"
+            style={{ fontFamily: "'Lora', serif" }}
+          >
+            Gentle tools for daily growth
+          </h2>
+          <p className="mt-4 text-[#9df2c8]/90 text-base sm:text-lg">
+            Build momentum with habits, reflect in your journal, and watch your
+            progress bloom.
+          </p>
+        </div>
 
-        <p className="text-center text-lg mt-6 max-w-3xl mx-auto text-[#9df2c8] leading-relaxed">
-          GrowFlow helps individuals and teams cultivate mindful progress by tracking habits,
-          improving mindset, reflecting on growth, and staying motivated with guided prompts.
-        </p>
-
-        <h2 className="text-center mt-16 text-3xl font-semibold text-[#c7ffdc]">
-          Meet the Developers
-        </h2>
-
-        {/* Developer Cards */}
-        <div className="flex flex-wrap justify-center gap-10 mt-12">
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6">
           {[
-            { img: "/ahsan.jpeg", name: "Ahsan Akhtar", mail: "k224021@nu.edu.pk" },
-            { img: "/asad26.jpeg", name: "Asad Irfan", mail: "k224276@nu.edu.pk" },
-            { img: "/hassan2.jpeg", name: "Hassan Murad", mail: "k224802@nu.edu.pk" },
-          ].map((dev, i) => (
+            {
+              icon: Target,
+              title: "Habit tracking",
+              desc: "Design rituals that stick. Stream, streak, celebrate.",
+            },
+            {
+              icon: BookOpen,
+              title: "Growth journal",
+              desc: "Free-write in English or Urdu. AI reflects back with kindness.",
+            },
+            {
+              icon: Sparkles,
+              title: "Insights dashboard",
+              desc: "See mood, focus, and progress through beautiful visuals.",
+            },
+          ].map(({ icon: Icon, title, desc }, i) => (
             <motion.div
-              key={i}
-              whileHover={{ scale: 1.05, y: -5 }}
-              className="bg-[rgba(10,45,30,0.7)] backdrop-blur-xl border border-white/10 
-              w-72 p-6 rounded-2xl shadow-xl text-center"
+              key={title}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: i * 0.1 }}
+              whileHover={{ y: -4 }}
+              className="rounded-2xl border border-white/10 p-6 sm:p-7 text-left backdrop-blur"
+              style={{
+                background: "rgba(10,45,30,0.6)",
+                boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
+              }}
             >
-              <Image
-                src={dev.img}
-                width={300}
-                height={300}
-                alt={dev.name}
-                className="w-full aspect-square object-cover rounded-xl shadow-md"
-              />
-              <h4 className="mt-4 text-xl font-semibold text-[#c7ffdc]">{dev.name}</h4>
-              <p className="text-[#9df2c8]">{dev.mail}</p>
+              <div
+                className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl"
+                style={{
+                  background: "linear-gradient(145deg,#1fbf75,#108a54)",
+                  color: "#052818",
+                  boxShadow: "0 6px 18px rgba(16,138,84,0.35)",
+                }}
+              >
+                <Icon size={20} />
+              </div>
+              <h3
+                className="text-lg sm:text-xl font-bold text-[#c7ffdc]"
+                style={{ fontFamily: "'Lora', serif" }}
+              >
+                {title}
+              </h3>
+              <p className="mt-2 text-sm sm:text-base leading-relaxed text-[#9df2c8]/85">
+                {desc}
+              </p>
             </motion.div>
           ))}
         </div>
       </motion.section>
 
-      {/* ---------------- CONTACT SECTION ---------------- */}
+      {/* About */}
+      <motion.section
+        ref={aboutRef}
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.3 }}
+        transition={{ duration: 0.7 }}
+        className="relative z-10 mx-auto max-w-5xl px-4 sm:px-6 py-16 sm:py-24 text-center"
+      >
+        <h2
+          className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#c7ffdc] tracking-tight"
+          style={{ fontFamily: "'Lora', serif" }}
+        >
+          Built with care
+        </h2>
+        <p className="mx-auto mt-5 max-w-2xl text-base sm:text-lg leading-relaxed text-[#9df2c8]/90">
+          GrowFlow is a final-year project exploring how small, consistent
+          rituals plus gentle AI feedback can support mental wellness. It&apos;s
+          ad-free, quiet, and designed to feel like a deep breath.
+        </p>
+      </motion.section>
+
+      {/* Contact */}
       <motion.section
         ref={contactRef}
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.2 }}
-        transition={{ duration: 0.8 }}
-        className="snap-start min-h-screen py-28 px-6"
+        viewport={{ once: true, amount: 0.3 }}
+        transition={{ duration: 0.7 }}
+        className="relative z-10 mx-auto max-w-5xl px-4 sm:px-6 pb-24 text-center"
       >
-        <h1 className="text-center text-4xl font-bold text-[#c7ffdc] drop-shadow-lg">
-          Contact Us
-        </h1>
-
-        <p className="text-center text-lg mt-3 text-[#9df2c8]">
-          Have questions or feedback? We'd love to hear from you.
-        </p>
-
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          className="bg-[rgba(10,45,30,0.7)] backdrop-blur-xl 
-          max-w-xl mx-auto mt-10 p-10 rounded-2xl shadow-xl border border-white/10"
+        <h2
+          className="text-2xl sm:text-3xl font-bold text-[#c7ffdc]"
+          style={{ fontFamily: "'Lora', serif" }}
         >
-          <h3 className="text-xl font-semibold text-[#c7ffdc]">General Support</h3>
-          <p className="text-[#9df2c8] mt-1">📩 support@growflow.app</p>
-
-          <h3 className="text-xl font-semibold text-[#c7ffdc] mt-6">Developer Contacts</h3>
-          <p className="text-[#9df2c8]">Ahsan — k224021@nu.edu.pk</p>
-          <p className="text-[#9df2c8]">Asad — k224276@nu.edu.pk</p>
-          <p className="text-[#9df2c8]">Hassan — k224802@nu.edu.pk</p>
-        </motion.div>
+          Say hello
+        </h2>
+        <p className="mt-3 text-[#9df2c8]/90">
+          Questions, feedback, or just want to chat about growth?
+        </p>
+        <a
+          href="mailto:hello@growflow.app"
+          className="mt-6 inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-base font-semibold text-[#c7ffdc] backdrop-blur hover:bg-white/10 transition-colors"
+        >
+          hello@growflow.app
+        </a>
       </motion.section>
+
+      {/* Footer */}
+      <footer className="relative z-10 border-t border-white/5 py-8 text-center text-xs text-[#9df2c8]/60">
+        © {new Date().getFullYear()} GrowFlow. Grow within, flow beyond.
+      </footer>
     </div>
   );
 }

@@ -4,7 +4,6 @@ import { Habit } from "src/habits/entities/habit.entity";
 import { User } from "src/users/entities/user.entity";
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
-
 @Entity('user_habits')
 export class UserHabit {
     @PrimaryGeneratedColumn({name:'user_habit_id'})
@@ -16,9 +15,9 @@ export class UserHabit {
     @Column({name:'user_id'})
     userId:number;
 
-    @Column({name:'start_date'})
-    startDate:Date;
-
+    // OPTION: Allow nullable so existing rows don't crash the migration
+    @Column({ name: 'start_date', type: 'timestamp', nullable: true })
+    startDate: Date;
 
     @ManyToOne(()=>User,(user)=>user.userHabits,{onDelete:'CASCADE'})
     @JoinColumn({name:'user_id'})
@@ -28,6 +27,7 @@ export class UserHabit {
     @JoinColumn({name:'habit_id'})
     habit:Habit;
 
-    @OneToMany(()=>HabitLog,(habitLog)=>habitLog.userHabit)
-    habitLogs:HabitLog[]
+    // Inside the UserHabit class, add this relation:
+    @OneToMany(() => HabitLog, (habitLog) => habitLog.userHabit)
+    habitLogs: HabitLog[]; // This matches the "(userHabit) => userHabit.habitLogs" in your other file
 }
