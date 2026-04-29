@@ -34,3 +34,11 @@ export async function updateTaskStatus(
   const res = await api.patch<Task>(`/tasks/${taskId}/status/${newStatus}`);
   return res.data;
 }
+
+export async function addFocusMinutes(
+  taskId: number,
+  minutes: number,
+): Promise<Task> {
+  const res = await api.patch<Task>(`/tasks/${taskId}/focus`, { minutes });
+  return res.data;
+}

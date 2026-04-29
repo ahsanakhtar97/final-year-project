@@ -19,7 +19,7 @@ export class AiController {
   })
   coach(
     @Body() dto: CoachRequestDto,
-  ): { reply: string; suggestions: string[]; tone: 'encourage' | 'celebrate' | 'reset' } {
+  ): Promise<{ reply: string; suggestions: string[]; tone: 'encourage' | 'celebrate' | 'reset' }> {
     return this.aiService.coach(dto);
   }
 }

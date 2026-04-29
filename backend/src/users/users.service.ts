@@ -70,6 +70,40 @@ export class UsersService {
     return { message: 'Account deleted successfully' };
   }
 
+  /**
+   * Returns everything we have on a user as a single JSON-serialisable
+   * object. Strips the password hash and any other server-only fields. The
+   * controller layer enforces that only the user themselves can call this.
+   */
+  async exportData(userId: number): Promise<Record<string, unknown>> {
+    const user = await this.userRepository.findOne({
+      where: { userId },
+      relations: ['tasks', 'userHabits', 'userHabits.habit'],
+    });
+    if (!user) throw new NotFoundException(`User with id ${userId} not found`);
+
+    // Eagerly destructure password out so it's never in the payload even if
+    // the global serializer is bypassed by a future regression.
+    const {
+      password: _password,
+      tasks,
+      userHabits,
+      ...profile
+    } = user;
+    void _password;
+
+    return {
+      exportedAt: new Date().toISOString(),
+      profile,
+      tasks,
+      userHabits: userHabits?.map((uh) => ({
+        userHabitId: uh.userHabitId,
+        habit: uh.habit,
+        startDate: uh.startDate,
+      })),
+    };
+  }
+
   async getTasks(id: number): Promise<Task[]> {
     const user = await this.findOneById(id);
     if (!user) throw new NotFoundException('User not found');
@@ -124,6 +158,18 @@ export class UsersService {
         throw new BadRequestException('Passwords do not match');
       }
       user.password = await bcrypt.hash(updateDto.password, 12);
+    }
+
+    // Professional profile fields. We accept empty strings as "clear", and
+    // undefined as "leave unchanged" so a partial PATCH doesn't wipe other
+    // fields. yearsExperience accepts null to clear.
+    if (updateDto.bio !== undefined) user.bio = updateDto.bio || null;
+    if (updateDto.credentials !== undefined) user.credentials = updateDto.credentials || null;
+    if (updateDto.languages !== undefined) user.languages = updateDto.languages || null;
+    if (updateDto.feeText !== undefined) user.feeText = updateDto.feeText || null;
+    if (updateDto.yearsExperience !== undefined) {
+      user.yearsExperience =
+        updateDto.yearsExperience === null ? null : Number(updateDto.yearsExperience);
     }
 
     try {

@@ -69,4 +69,13 @@ export class TasksController {
   ): Promise<Task> {
     return this.tasksService.updateStatus(taskId, newStatus);
   }
+
+  @Patch(':id/focus')
+  @ApiOperation({ summary: 'Add focus minutes to a task.' })
+  addFocusMinutes(
+    @Param('id', ParseIntPipe) taskId: number,
+    @Body('minutes', ParseIntPipe) minutes: number,
+  ): Promise<Task> {
+    return this.tasksService.addFocusMinutes(taskId, minutes);
+  }
 }

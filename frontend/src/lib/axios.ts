@@ -46,7 +46,15 @@ api.interceptors.response.use(
       }
     }
 
-    console.error("API Error:", err.response?.data || err.message);
+    // Log a single, useful line. `err.response.data` can be `{}` when the
+    // server returns no body, so fall through to status text + message.
+    const method = (err.config?.method ?? "GET").toUpperCase();
+    const body = err.response?.data;
+    const hasBody = body && Object.keys(body as object).length > 0;
+    console.error(
+      `API Error: ${method} ${url} -> ${status ?? "no status"}`,
+      hasBody ? body : err.response?.statusText || err.message,
+    );
     return Promise.reject(err);
   },
 );

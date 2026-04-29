@@ -19,6 +19,7 @@ import { getCurrentUser, clearAuth } from "@/lib/auth";
 import { getJournalEntriesByUser } from "@/app/actions/journal";
 import { getTasks } from "@/app/actions/tasks";
 import { getHabitsByUserId } from "@/app/actions/user-habits";
+import { getUserBadges, UserBadge } from "@/app/actions/gamification";
 
 // --- Theme Classes ---
 const T = {
@@ -79,6 +80,7 @@ export default function ProfilePage() {
     tasksCompleted: number;
     activeHabits: number;
   } | null>(null);
+  const [badges, setBadges] = useState<UserBadge[]>([]);
   const [saving, setSaving] = useState(false);
 
   const cc = (base: string, dark: string, light?: string) => {
@@ -99,14 +101,16 @@ export default function ProfilePage() {
     let cancelled = false;
     (async () => {
       try {
-        const [user, journal, tasks, userHabits] = await Promise.all([
+        const [user, journal, tasks, userHabits, userBadgesData] = await Promise.all([
           getUser(me.userId).catch(() => null),
           getJournalEntriesByUser(me.userId).catch(() => []),
           getTasks().catch(() => []),
           getHabitsByUserId(me.userId).catch(() => []),
+          getUserBadges(me.userId).catch(() => []),
         ]);
         if (cancelled) return;
         if (user) setServerUser(user);
+        setBadges(userBadgesData);
         setStats({
           journalEntries: journal.length,
           tasksCompleted: tasks.filter(
@@ -304,6 +308,22 @@ export default function ProfilePage() {
                   </ul>
                 </>
               )}
+
+              <div className="w-full mt-6 space-y-3">
+                <p className={cc("font-semibold", isDark ? "text-[#bff2d6]" : "text-[#163b25]")}>
+                  Achievements:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {badges.length > 0 ? badges.map(ub => (
+                    <div key={ub.userBadgeId} className="flex flex-col items-center p-2 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10" title={ub.badge.description}>
+                      <span className="text-2xl">{ub.badge.icon || '🏆'}</span>
+                      <span className="text-xs font-semibold mt-1" style={{ color: isDark ? "#c8fadd" : "#163b25" }}>{ub.badge.name}</span>
+                    </div>
+                  )) : (
+                    <p className="text-sm text-gray-500">No badges yet. Keep going!</p>
+                  )}
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -123,22 +123,32 @@ export default function SettingsPage() {
     if (!userId) return;
     setBusy("export");
     try {
-      const [tasks, journal, habits, streaks, goals] = await Promise.all([
-        getTasks().catch(() => []),
-        getJournalEntriesByUser(userId).catch(() => []),
-        getHabitsByUserId(userId).catch(() => []),
-        getUserStreaks(userId).catch(() => []),
-        getGoalsByUser(userId).catch(() => []),
-      ]);
-      const payload = {
-        exportedAt: new Date().toISOString(),
-        userId,
-        tasks,
-        journal,
-        habits,
-        streaks,
-        goals,
-      };
+      // Single round-trip to the GDPR-style export endpoint. The backend
+      // strips the password hash and assembles profile + tasks + habits in
+      // one shot. Falls back to a multi-call client aggregate if that
+      // endpoint isn't available (older backend builds).
+      let payload: unknown;
+      try {
+        const res = await api.get(`/users/${userId}/export`);
+        payload = res.data;
+      } catch {
+        const [tasks, journal, habits, streaks, goals] = await Promise.all([
+          getTasks().catch(() => []),
+          getJournalEntriesByUser(userId).catch(() => []),
+          getHabitsByUserId(userId).catch(() => []),
+          getUserStreaks(userId).catch(() => []),
+          getGoalsByUser(userId).catch(() => []),
+        ]);
+        payload = {
+          exportedAt: new Date().toISOString(),
+          userId,
+          tasks,
+          journal,
+          habits,
+          streaks,
+          goals,
+        };
+      }
       const blob = new Blob([JSON.stringify(payload, null, 2)], {
         type: "application/json",
       });

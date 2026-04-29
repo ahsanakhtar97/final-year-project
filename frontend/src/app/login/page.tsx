@@ -7,7 +7,13 @@ import { useRouter } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
 import { toast } from "react-toastify";
 import { Eye, EyeOff, Loader2, Sparkles } from "lucide-react";
+import dynamic from "next/dynamic";
 import { loginUser } from "../actions/auth";
+
+const AmbientScene = dynamic(
+  () => import("../components/ambient-scene"),
+  { ssr: false, loading: () => null },
+);
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,9 +26,13 @@ export default function LoginPage() {
     const token = localStorage.getItem("accessToken");
     if (!token) return;
     try {
-      const decoded: { exp: number } = jwtDecode(token);
+      const decoded: { exp: number; role?: string } = jwtDecode(token);
       if (decoded.exp > Date.now() / 1000) {
-        router.push("/dashboard");
+        const dest =
+          decoded.role === "psychiatrist" || decoded.role === "psychologist"
+            ? "/dashboard/provider"
+            : "/dashboard";
+        router.push(dest);
       } else {
         localStorage.removeItem("accessToken");
       }
@@ -40,7 +50,8 @@ export default function LoginPage() {
       if (user?.accessToken) {
         toast.success("Welcome back! 🌿");
         localStorage.setItem("accessToken", user.accessToken);
-        router.push("/dashboard");
+        const dest = user.role === "psychiatrist" || user.role === "psychologist" ? "/dashboard/provider" : "/dashboard";
+        router.push(dest);
       } else {
         toast.error("Invalid credentials or server error.");
       }
@@ -60,6 +71,9 @@ export default function LoginPage() {
         fontFamily: "'Inter', system-ui, sans-serif",
       }}
     >
+      {/* 3D ambient scene -- breathing blob behind glows + card. */}
+      <AmbientScene variant="knot" mode="dark" intensity={0.85} position="hero" />
+
       {/* ambient glows */}
       <div
         aria-hidden
@@ -88,12 +102,13 @@ export default function LoginPage() {
 
       {/* Card */}
       <div
-        className="relative z-10 w-full max-w-5xl overflow-hidden rounded-3xl border border-white/10 shadow-2xl grid grid-cols-1 md:grid-cols-2"
+        className="relative z-10 w-full max-w-5xl overflow-hidden rounded-3xl grid grid-cols-1 md:grid-cols-2"
         style={{
-          background: "rgba(10, 45, 30, 0.85)",
-          boxShadow: "0 30px 80px rgba(0,0,0,0.6)",
-          backdropFilter: "blur(14px)",
-          WebkitBackdropFilter: "blur(14px)",
+          background: "rgba(10, 45, 30, 0.78)",
+          boxShadow:
+            "0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(110,255,196,0.18), 0 0 60px -20px rgba(92,242,255,0.45)",
+          backdropFilter: "blur(18px) saturate(140%)",
+          WebkitBackdropFilter: "blur(18px) saturate(140%)",
         }}
       >
         {/* Left — brand panel (hidden on xs) */}

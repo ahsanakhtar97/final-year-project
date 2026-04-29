@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/app/dashboard/theme-context";
 import { toast } from "react-toastify";
-import { getTasks, updateTaskStatus } from "@/app/actions/tasks";
+import { getTasks, updateTaskStatus, addFocusMinutes } from "@/app/actions/tasks";
 import { Task, TaskStatus } from "@/types/tasks";
 
 type Mode = "focus" | "shortBreak" | "longBreak";
@@ -169,7 +169,7 @@ export default function FocusPage() {
     [tasks, selectedTaskId],
   );
 
-  const handleSessionComplete = () => {
+  const handleSessionComplete = async () => {
     if (soundOn) playBell();
     if ("Notification" in window && Notification.permission === "granted") {
       try {
@@ -190,7 +190,18 @@ export default function FocusPage() {
     setLog((prev) => [entry, ...prev].slice(0, 50));
     if (mode === "focus") {
       setCompletedToday((c) => c + 1);
-      toast.success("Focus block complete \u2014 nice work!");
+      
+      if (selectedTaskId !== "") {
+        try {
+          await addFocusMinutes(Number(selectedTaskId), Math.round(DURATIONS.focus / 60));
+          toast.success("Focus time logged to task!");
+        } catch {
+          toast.error("Failed to log focus time to server.");
+        }
+      } else {
+        toast.success("Focus block complete \u2014 nice work!");
+      }
+
       // Auto-suggest a break.
       setMode((completedToday + 1) % 4 === 0 ? "longBreak" : "shortBreak");
     } else {

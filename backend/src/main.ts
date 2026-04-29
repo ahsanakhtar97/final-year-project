@@ -113,6 +113,14 @@ async function bootstrap() {
   await app.listen(port);
   logger.log(`GrowFlow API listening on port ${port}`);
   logger.log(`Allowed CORS origins: ${corsOrigins.join(', ')}`);
+  // Throttle banner: prove which limit is loaded on this boot. If you're
+  // still seeing 429s, the banner number tells you whether the new config
+  // is actually running, or whether you're talking to a stale process.
+  const throttleLimit =
+    process.env.NODE_ENV === 'production' ? 6000 : 1_000_000;
+  logger.log(
+    `Throttle config -> NODE_ENV=${process.env.NODE_ENV ?? 'unset'}, default limit ${throttleLimit}/min`,
+  );
 }
 
 bootstrap().catch((err) => {

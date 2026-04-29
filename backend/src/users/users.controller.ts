@@ -2,11 +2,13 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   NotFoundException,
   Param,
   ParseIntPipe,
   Patch,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -17,12 +19,17 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import type { Request } from 'express';
 
 import { Task } from '../tasks/entities/task.entity';
 import { TaskStatus } from '../tasks/enums/task-status.enum';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 import { UsersService } from './users.service';
+
+interface AuthedReq extends Request {
+  user: { userId: number };
+}
 
 @ApiTags('users')
 @ApiBearerAuth('access-token')
@@ -84,5 +91,20 @@ export class UsersController {
   @ApiOperation({ summary: 'Delete the user account permanently.' })
   deleteUser(@Param('id', ParseIntPipe) id: number): Promise<{ message: string }> {
     return this.usersService.remove(id);
+  }
+
+  @Get(':id/export')
+  @ApiOperation({
+    summary: "Download all of the user's data as JSON (GDPR-style export).",
+  })
+  async exportData(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: AuthedReq,
+  ): Promise<Record<string, unknown>> {
+    // Hard rule: a user can only export their own data, never anyone else's.
+    if (id !== req.user.userId) {
+      throw new ForbiddenException("You can only export your own account.");
+    }
+    return this.usersService.exportData(id);
   }
 }

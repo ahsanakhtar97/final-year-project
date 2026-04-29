@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+import { GamificationService } from '../gamification/gamification.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { Task } from './entities/task.entity';
 import { TaskStatus } from './enums/task-status.enum';
@@ -17,6 +18,7 @@ export class TasksService {
 
   constructor(
     @InjectRepository(Task) private readonly tasksRepository: Repository<Task>,
+    private readonly gamificationService: GamificationService,
   ) {}
 
   async create(createTaskDto: CreateTaskDto): Promise<Task> {
@@ -53,7 +55,24 @@ export class TasksService {
 
   async updateStatus(taskId: number, newStatus: TaskStatus): Promise<Task> {
     const task = await this.findOne(taskId);
+    const oldStatus = task.taskStatus;
     task.taskStatus = newStatus;
+    if (newStatus === TaskStatus.COMPLETED) {
+      task.completedAt = new Date();
+    }
+    const savedTask = await this.tasksRepository.save(task);
+
+    // Award XP if task is completed
+    if (oldStatus !== TaskStatus.COMPLETED && newStatus === TaskStatus.COMPLETED) {
+      await this.gamificationService.awardXp(savedTask.userId, 10); // 10 XP per task
+    }
+
+    return savedTask;
+  }
+
+  async addFocusMinutes(taskId: number, minutes: number): Promise<Task> {
+    const task = await this.findOne(taskId);
+    task.focusMinutes = (task.focusMinutes || 0) + minutes;
     return this.tasksRepository.save(task);
   }
 }

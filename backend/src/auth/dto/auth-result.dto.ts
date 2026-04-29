@@ -1,15 +1,19 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { UserRole } from '../../users/enums/user-role.enum';
 
 export class AuthResultDto {
-  @ApiProperty({ description: 'Signed JWT — include as `Bearer <token>` header.' })
+  @ApiProperty()
   accessToken!: string;
 
-  @ApiProperty({ example: 42 })
+  @ApiProperty()
   userId!: number;
 
-  @ApiProperty({ example: 'Ada Lovelace' })
+  @ApiProperty()
   name!: string;
 
-  @ApiProperty({ example: 'ada@growflow.app' })
+  @ApiProperty()
   email!: string;
+
+  @ApiProperty({ enum: UserRole })
+  role!: UserRole;
 }

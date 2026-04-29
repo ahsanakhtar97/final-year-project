@@ -75,6 +75,26 @@ class EnvironmentVariables {
   @IsString()
   AI_SERVICE_URL?: string;
 
+  // Google Gemini API key. Optional -- if absent, AiService falls back to its
+  // built-in canned/deterministic responses, so the app still runs without it.
+  @IsOptional()
+  @IsString()
+  GEMINI_API_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  GEMINI_MODEL?: string;
+
+  // Shared secret used to authenticate the admin endpoints (provider
+  // verification, audit). Set this to a long random string in .env.
+  @IsOptional()
+  @IsString()
+  @MinLength(16, {
+    message:
+      'ADMIN_TOKEN must be at least 16 chars when set. Use `openssl rand -hex 24` to generate one.',
+  })
+  ADMIN_TOKEN?: string;
+
   @IsOptional()
   @IsString()
   SWAGGER_ENABLED?: string;

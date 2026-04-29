@@ -4,6 +4,8 @@ export interface User {
   userId: number;
   name: string;
   email: string;
+  xp: number;
+  level: number;
   createdAt?: string;
   updatedAt?: string;
 }

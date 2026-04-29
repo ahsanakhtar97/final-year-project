@@ -7,6 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 
+import { UserRole } from '../users/enums/user-role.enum';
 import { UsersService } from '../users/users.service';
 import { AuthInputDto } from './dto/auth-input.dto';
 import { AuthResultDto } from './dto/auth-result.dto';
@@ -23,30 +24,22 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  /**
-   * Called by LocalStrategy — verifies email + password and returns a
-   * scrubbed user representation (no password hash).
-   */
   async validateUser(input: AuthInputDto): Promise<SignInDto | null> {
     const user = await this.usersService.findOneByEmail(input.email);
     if (!user) {
-      // Run a dummy bcrypt compare so the response time doesn't leak
-      // whether the email exists (basic timing-attack mitigation).
       await bcrypt.compare(input.password, '$2b$12$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvalid');
       return null;
     }
-
     const matches = await bcrypt.compare(input.password, user.password);
     if (!matches) return null;
-
     return {
       userId: user.userId,
       name: user.name,
       email: user.email,
+      role: user.role ?? UserRole.PATIENT,
     };
   }
 
-  /** Convenience wrapper for callers that don't go through passport. */
   async authenticate(input: AuthInputDto): Promise<AuthResultDto> {
     const user = await this.validateUser(input);
     if (!user) throw new UnauthorizedException('Incorrect email or password');
@@ -58,40 +51,46 @@ export class AuthService {
       sub: user.userId,
       name: user.name,
       email: user.email,
+      role: user.role,
     });
     return {
       accessToken,
       userId: user.userId,
       name: user.name,
       email: user.email,
+      role: user.role,
     };
   }
 
   async register(dto: RegisterDto): Promise<AuthResultDto> {
-    // NB: findOneByEmail + create is not atomic — the Users table should
-    // additionally have a UNIQUE constraint on email so Postgres rejects a
-    // duplicate that wins the race. We catch that error below just in case.
     const existing = await this.usersService.findOneByEmail(dto.email);
     if (existing) {
       throw new ConflictException('An account with that email already exists');
     }
-
     const passwordHash = await bcrypt.hash(dto.password, AuthService.BCRYPT_ROUNDS);
     try {
       const newUser = await this.usersService.create({
         name: dto.name,
         email: dto.email,
         password: passwordHash,
+        role: dto.role ?? UserRole.PATIENT,
+        bio: dto.bio,
+        credentials: dto.credentials,
+        languages: dto.languages,
+        feeText: dto.feeText,
+        yearsExperience: dto.yearsExperience,
       });
-      this.logger.log(`New user registered: userId=${newUser.userId}`);
+      this.logger.log(
+        `New user registered: userId=${newUser.userId} role=${newUser.role}`,
+      );
       return this.signIn({
         userId: newUser.userId,
         name: newUser.name,
         email: newUser.email,
+        role: newUser.role,
       });
     } catch (err) {
-      // Handle the Postgres unique-violation fallback.
-      const driverError = err as { code?: string; detail?: string };
+      const driverError = err as { code?: string };
       if (driverError?.code === '23505') {
         throw new ConflictException('An account with that email already exists');
       }

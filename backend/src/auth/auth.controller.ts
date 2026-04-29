@@ -20,6 +20,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
+import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
 import { AuthInputDto } from './dto/auth-input.dto';
 import { AuthResultDto } from './dto/auth-result.dto';
@@ -29,7 +30,10 @@ import { SignInDto } from './dto/sign-in.dto';
 @ApiTags('auth')
 @Controller({ path: 'auth', version: '1' })
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly usersService: UsersService,
+  ) {}
 
   @Post('login')
   // Rate-limit login: 5 attempts per minute per IP.
@@ -58,9 +62,24 @@ export class AuthController {
   @Get('me')
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Return the currently authenticated user.' })
+  @ApiOperation({ summary: 'Return the currently authenticated user (full row).' })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid token.' })
-  getUserInfo(@Request() req: { user: SignInDto }): SignInDto {
-    return req.user;
+  async getUserInfo(@Request() req: { user: SignInDto }) {
+    // Hydrate the JWT identity from the database so professional profile
+    // fields (bio, credentials, etc.) come back too. The class-serializer
+    // strips the password hash automatically because of @Exclude on User.
+    const fresh = await this.usersService.findOneById(req.user.userId);
+    if (!fresh) return req.user;
+    return {
+      userId: fresh.userId,
+      name: fresh.name,
+      email: fresh.email,
+      role: fresh.role,
+      bio: fresh.bio,
+      credentials: fresh.credentials,
+      languages: fresh.languages,
+      feeText: fresh.feeText,
+      yearsExperience: fresh.yearsExperience,
+    };
   }
 }

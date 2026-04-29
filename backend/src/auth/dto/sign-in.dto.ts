@@ -1,9 +1,8 @@
-/**
- * Internal DTO — represents a user whose credentials have already been
- * verified by LocalStrategy. Never exposed directly to clients.
- */
+import { UserRole } from '../../users/enums/user-role.enum';
+
 export class SignInDto {
   userId!: number;
   name!: string;
   email!: string;
+  role!: UserRole;
 }

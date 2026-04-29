@@ -22,11 +22,15 @@ import {
   CartesianGrid,
   BarChart,
   Bar,
+  ComposedChart,
+  Scatter,
+  Legend,
 } from "recharts";
 import { TrendingUp, Flame, BookOpen, CheckCircle2 } from "lucide-react";
 import { useTheme } from "@/app/dashboard/theme-context";
 import { getUserId } from "@/lib/utils";
 import { getJournalEntriesByUser } from "@/app/actions/journal";
+import { getUserAnalytics, AnalyticsCorrelation } from "@/app/actions/analytics";
 import {
   fetchDailyCompleted,
   getHabitsByUserId,
@@ -70,6 +74,7 @@ export default function InsightsPage() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [tasksTotal, setTasksTotal] = useState(0);
   const [tasksCompleted, setTasksCompleted] = useState(0);
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsCorrelation[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -77,12 +82,13 @@ export default function InsightsPage() {
         const uid = getUserId();
         if (!uid) return;
 
-        const [journal, daily, str, userHabits, allTasks] = await Promise.all([
+        const [journal, daily, str, userHabits, allTasks, analytics] = await Promise.all([
           getJournalEntriesByUser(uid).catch(() => []),
           fetchDailyCompleted(uid, 14).catch(() => []),
           getUserStreaks(uid).catch(() => []),
           getHabitsByUserId(uid).catch(() => []),
           getTasks().catch(() => []),
+          getUserAnalytics(uid).catch(() => ({ correlations: [] })),
         ]);
 
         // Build 30-day mood series with gaps backfilled.
@@ -129,6 +135,7 @@ export default function InsightsPage() {
         setTasksCompleted(
           allTasks.filter((t) => t.taskStatus === TaskStatus.COMPLETED).length,
         );
+        setAnalyticsData(analytics.correlations);
       } finally {
         setLoading(false);
       }
@@ -156,6 +163,21 @@ export default function InsightsPage() {
 
   const gridColor = isDark ? "rgba(174,240,201,0.10)" : "rgba(22,59,37,0.10)";
   const axisColor = isDark ? "#9ed8bb" : "#5d7a66";
+
+  const scatterData = analyticsData.filter(d => d.moodScore !== null);
+  let correlationText = "Not enough data yet.";
+  if (scatterData.length >= 3) {
+    const avgMoodWhenHabitsDone = scatterData.filter(d => d.habitsCompleted > 0).reduce((sum, d) => sum + (d.moodScore || 0), 0) / scatterData.filter(d => d.habitsCompleted > 0).length || 0;
+    const avgMoodWhenNoHabits = scatterData.filter(d => d.habitsCompleted === 0).reduce((sum, d) => sum + (d.moodScore || 0), 0) / scatterData.filter(d => d.habitsCompleted === 0).length || 0;
+    
+    if (avgMoodWhenHabitsDone > avgMoodWhenNoHabits + 1) {
+      correlationText = "Your mood tends to be significantly better on days you complete your habits!";
+    } else if (avgMoodWhenHabitsDone > avgMoodWhenNoHabits) {
+      correlationText = "Completing habits seems to have a slight positive impact on your mood.";
+    } else {
+      correlationText = "Your mood seems independent of your habit completion right now.";
+    }
+  }
 
   return (
     <div className="mx-auto max-w-6xl gf-fade-up">
@@ -346,6 +368,51 @@ export default function InsightsPage() {
             })}
           </ul>
         )}
+      </div>
+      {/* Advanced Analytics */}
+      <div className="space-y-6 mt-8 mb-8">
+        <h2 className="gf-h2" style={{ color: primaryAccent }}>Advanced Correlations</h2>
+        
+        <div className="gf-card p-6" style={{ background: isDark ? 'linear-gradient(135deg,#0f241f 0%, #06130f 100%)' : 'linear-gradient(135deg,#ffffff 0%, #f0fff4 100%)', border: `2px solid ${primaryAccent}` }}>
+          <h3 className="text-lg font-bold mb-2" style={{ color: primaryAccent }}>AI Insight</h3>
+          <p className="text-sm md:text-base font-medium">{correlationText}</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="gf-card p-5">
+            <h3 className="font-bold text-sm mb-4" style={{ color: primaryAccent }}>Habits vs Mood Timeline</h3>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={analyticsData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                  <XAxis dataKey="date" tickFormatter={(str) => str.slice(5)} stroke={axisColor} fontSize={11} />
+                  <YAxis yAxisId="left" stroke={axisColor} fontSize={11} />
+                  <YAxis yAxisId="right" orientation="right" domain={[0, 10]} stroke="#3498db" fontSize={11} />
+                  <Tooltip contentStyle={{ background: isDark ? "#0f2a21" : "#ffffff", border: `1px solid ${gridColor}`, borderRadius: 8, fontSize: 12 }} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Bar yAxisId="left" dataKey="habitsCompleted" name="Habits Completed" fill={primaryAccent} radius={[4, 4, 0, 0]} />
+                  <Line yAxisId="right" type="monotone" dataKey="moodScore" name="Mood Score (0-10)" stroke="#3498db" strokeWidth={3} dot={{ r: 4 }} connectNulls />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="gf-card p-5">
+            <h3 className="font-bold text-sm mb-4" style={{ color: primaryAccent }}>Mood Correlation</h3>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={scatterData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                  <XAxis type="number" dataKey="habitsCompleted" name="Habits Completed" domain={['dataMin', 'dataMax']} stroke={axisColor} fontSize={11} />
+                  <YAxis type="number" dataKey="moodScore" name="Mood Score" domain={[0, 10]} stroke={axisColor} fontSize={11} />
+                  <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ background: isDark ? "#0f2a21" : "#ffffff", border: `1px solid ${gridColor}`, borderRadius: 8, fontSize: 12 }} />
+                  <Scatter name="Days" data={scatterData} fill="#8884d8" />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+            <p className="text-xs text-center mt-2 opacity-70">Scatter plot showing if higher habits completed correlates with higher mood.</p>
+          </div>
+        </div>
       </div>
     </div>
   );

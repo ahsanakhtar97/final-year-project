@@ -7,7 +7,13 @@ import { useRouter } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
 import { toast } from "react-toastify";
 import { Eye, EyeOff, Loader2, Sparkles, Check } from "lucide-react";
+import dynamic from "next/dynamic";
 import { registerUser } from "../actions/auth";
+
+const AmbientScene = dynamic(
+  () => import("../components/ambient-scene"),
+  { ssr: false, loading: () => null },
+);
 
 export default function SignupPage() {
   const router = useRouter();
@@ -20,14 +26,28 @@ export default function SignupPage() {
   const [agreed, setAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // If they're already signed in, send them straight to the dashboard.
+  // Role + professional-only fields. The backend will ignore profile fields
+  // when role is "patient", so it's safe to send them either way.
+  const [role, setRole] = useState<"patient" | "psychiatrist" | "psychologist">("patient");
+  const [credentials, setCredentials] = useState("");
+  const [yearsExperience, setYearsExperience] = useState("");
+  const [languages, setLanguages] = useState("");
+  const [feeText, setFeeText] = useState("");
+  const [bio, setBio] = useState("");
+  const isProfessional = role === "psychiatrist" || role === "psychologist";
+
+  // If they're already signed in, send them to the right dashboard for their role.
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     if (!token) return;
     try {
-      const decoded: { exp: number } = jwtDecode(token);
+      const decoded: { exp: number; role?: string } = jwtDecode(token);
       if (decoded.exp > Date.now() / 1000) {
-        router.push("/dashboard");
+        const dest =
+          decoded.role === "psychiatrist" || decoded.role === "psychologist"
+            ? "/dashboard/provider"
+            : "/dashboard";
+        router.push(dest);
       } else {
         localStorage.removeItem("accessToken");
       }
@@ -74,11 +94,23 @@ export default function SignupPage() {
 
     setSubmitting(true);
     try {
-      const user = await registerUser({ name, email, password });
+      const user = await registerUser({
+        name,
+        email,
+        password,
+        role,
+        ...(isProfessional && {
+          credentials: credentials || undefined,
+          yearsExperience: yearsExperience ? Number(yearsExperience) : undefined,
+          languages: languages || undefined,
+          feeText: feeText || undefined,
+          bio: bio || undefined,
+        }),
+      });
       if (user?.accessToken) {
         toast.success(`Welcome, ${user.name?.split(" ")[0] ?? "friend"}!`);
         localStorage.setItem("accessToken", user.accessToken);
-        router.push("/dashboard");
+        router.push(user.role === "psychiatrist" || user.role === "psychologist" ? "/dashboard/provider" : "/dashboard");
       } else {
         toast.error("Account created, but no token returned. Please log in.");
         router.push("/login");
@@ -127,6 +159,9 @@ export default function SignupPage() {
         fontFamily: "'Inter', system-ui, sans-serif",
       }}
     >
+      {/* 3D ambient scene -- helix conveying growth, themed for sign-up. */}
+      <AmbientScene variant="helix" mode="dark" intensity={0.85} position="hero" />
+
       <div
         aria-hidden
         className="pointer-events-none absolute -top-48 -left-48 h-[500px] w-[500px] rounded-full"
@@ -146,12 +181,13 @@ export default function SignupPage() {
       </Link>
 
       <div
-        className="relative z-10 w-full max-w-5xl overflow-hidden rounded-3xl border border-white/10 shadow-2xl grid grid-cols-1 md:grid-cols-2"
+        className="relative z-10 w-full max-w-5xl overflow-hidden rounded-3xl grid grid-cols-1 md:grid-cols-2"
         style={{
-          background: "rgba(10, 45, 30, 0.85)",
-          boxShadow: "0 30px 80px rgba(0,0,0,0.6)",
-          backdropFilter: "blur(14px)",
-          WebkitBackdropFilter: "blur(14px)",
+          background: "rgba(10, 45, 30, 0.78)",
+          boxShadow:
+            "0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(110,255,196,0.18), 0 0 60px -20px rgba(92,242,255,0.45)",
+          backdropFilter: "blur(18px) saturate(140%)",
+          WebkitBackdropFilter: "blur(18px) saturate(140%)",
         }}
       >
         <div
@@ -226,6 +262,106 @@ export default function SignupPage() {
           </p>
 
           <form onSubmit={handleSignup} className="mt-8 space-y-4">
+            {/* Role picker -- choose patient (default) or professional. */}
+            <div className="mb-2">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[#9df2c8] mb-1.5">
+                Sign up as
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { v: "patient" as const, label: "User" },
+                  { v: "psychiatrist" as const, label: "Psychiatrist" },
+                  { v: "psychologist" as const, label: "Psychologist" },
+                ].map((opt) => (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    onClick={() => setRole(opt.v)}
+                    className={`rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold border transition-all ${
+                      role === opt.v
+                        ? "border-[#6effc4] text-[#012016] shadow-md"
+                        : "border-white/10 text-[#c7ffdc]/80 hover:border-white/20"
+                    }`}
+                    style={
+                      role === opt.v
+                        ? {
+                            background:
+                              "linear-gradient(135deg,#6effc4 0%,#1fbf75 55%,#108a54 100%)",
+                            boxShadow:
+                              "0 4px 14px rgba(31,191,117,0.35), 0 0 0 1px rgba(110,255,196,0.45) inset",
+                          }
+                        : { background: "rgba(255,255,255,0.04)" }
+                    }
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Professional-only fields. Hidden for patients. */}
+            {isProfessional && (
+              <div className="space-y-3 rounded-xl border border-[#6effc4]/20 p-3" style={{ background: "rgba(110,255,196,0.04)" }}>
+                <div className="text-[11px] uppercase tracking-wider text-[#9df2c8]/80">
+                  Professional details (visible on your public profile)
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#9df2c8] mb-1">Credentials</label>
+                  <input
+                    type="text"
+                    value={credentials}
+                    onChange={(e) => setCredentials(e.target.value)}
+                    placeholder="MBBS, FCPS (Psychiatry)"
+                    className="w-full rounded-lg border border-white/10 bg-[rgba(4,30,20,0.85)] px-3 py-2 text-sm text-[#d6ffec] placeholder-[#9df2c8]/40 outline-none focus:border-[#60d394]"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#9df2c8] mb-1">Years exp.</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={80}
+                      value={yearsExperience}
+                      onChange={(e) => setYearsExperience(e.target.value)}
+                      placeholder="8"
+                      className="w-full rounded-lg border border-white/10 bg-[rgba(4,30,20,0.85)] px-3 py-2 text-sm text-[#d6ffec] placeholder-[#9df2c8]/40 outline-none focus:border-[#60d394]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#9df2c8] mb-1">Languages</label>
+                    <input
+                      type="text"
+                      value={languages}
+                      onChange={(e) => setLanguages(e.target.value)}
+                      placeholder="English, Urdu"
+                      className="w-full rounded-lg border border-white/10 bg-[rgba(4,30,20,0.85)] px-3 py-2 text-sm text-[#d6ffec] placeholder-[#9df2c8]/40 outline-none focus:border-[#60d394]"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#9df2c8] mb-1">Fee (info only)</label>
+                  <input
+                    type="text"
+                    value={feeText}
+                    onChange={(e) => setFeeText(e.target.value)}
+                    placeholder="PKR 5,000 / session"
+                    className="w-full rounded-lg border border-white/10 bg-[rgba(4,30,20,0.85)] px-3 py-2 text-sm text-[#d6ffec] placeholder-[#9df2c8]/40 outline-none focus:border-[#60d394]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#9df2c8] mb-1">Short bio</label>
+                  <textarea
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    placeholder="Tell users a little about your approach"
+                    rows={3}
+                    className="w-full rounded-lg border border-white/10 bg-[rgba(4,30,20,0.85)] px-3 py-2 text-sm text-[#d6ffec] placeholder-[#9df2c8]/40 outline-none focus:border-[#60d394] resize-none"
+                  />
+                </div>
+              </div>
+            )}
+
             <div>
               <label
                 htmlFor="name"

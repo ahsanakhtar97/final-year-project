@@ -1,0 +1,78 @@
+# GrowFlow -- one-command development stack.
+#
+# Usage:
+#   docker compose up --build
+#
+# Services:
+#   db        Postgres 16 with the GrowFlow schema (volume-persisted).
+#   backend   NestJS API on :3000.
+#   frontend  Next.js app on :4000, talks to backend via service name.
+#
+# Notes:
+#   - Copy `.env.compose.example` to `.env.compose` and fill in real values
+#     (especially JWT_SECRET, GEMINI_API_KEY, ADMIN_TOKEN) before `up`.
+#   - The backend uses TypeORM `synchronize: true` so the first boot creates
+#     the full schema automatically. Switch to migrations before production.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-growflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-growflow}
+      POSTGRES_DB: ${POSTGRES_DB:-growflow}
+    ports:
+      - "5432:5432"
+    volumes:
+      - growflow_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-growflow}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-growflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-growflow}
+      POSTGRES_DB: ${POSTGRES_DB:-growflow}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1d}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:4000}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Next.js inlines NEXT_PUBLIC_* at build time, so we pass it here.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+    ports:
+      - "4000:4000"
+
+volumes:
+  growflow_pgdata:

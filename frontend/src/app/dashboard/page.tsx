@@ -20,8 +20,9 @@ import {
 import { fetchDailyCompleted, getBestWorstHabit, getHabitsByUserId, getUserStreaks } from "../actions/user-habits";
 import { toast } from 'react-toastify';
 import { getUserId } from "@/lib/utils";
-import { getTasksByUserId } from "../actions/getUsers";
+import { getTasksByUserId, getUser } from "../actions/getUsers";
 import { Task } from "@/types/tasks";
+import { User } from "@/types/users";
 import { HabitStat, HabitStreak } from "@/types/habits";
 import { getJournalEntriesByUser } from "../actions/journal";
 import { JournalEntry } from "@/types/journal";
@@ -48,6 +49,7 @@ export default function DashboardPage() {
   });
   const [habits, setHabits] = useState<UserHabit[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [user, setUser] = useState<User | null>(null);
   const [mounted, setMounted] = useState(false);
   const [, setHabitStreaks] = useState<HabitStreak[]>([]);
   const [dailyCompleted, setDailyCompleted] = useState<{ date: string; completed: number }[]>([]);
@@ -61,6 +63,9 @@ export default function DashboardPage() {
       if (userId) {
         const h = await getHabitsByUserId(userId);
         setHabits(h as unknown as UserHabit[]);
+
+        const u = await getUser(userId);
+        setUser(u);
 
         // Moods stored locally for the emoji selector legacy flow.
         try {
@@ -286,6 +291,23 @@ export default function DashboardPage() {
           Live
         </span>
       </div>
+
+      {user && (
+        <div className="mb-6 flex items-center gap-4 gf-card p-4 gf-fade-up">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full text-white font-bold text-xl shadow-lg" style={{ background: isDark ? '#1fbf75' : '#27ae60' }}>
+            {user.level}
+          </div>
+          <div className="flex-1">
+            <div className="flex justify-between items-end mb-1">
+              <span className="text-sm font-bold uppercase tracking-wider" style={{ color: greenAccent }}>Level {user.level}</span>
+              <span className="text-xs gf-muted">{user.xp} / {user.level * 100} XP</span>
+            </div>
+            <div className="h-3 w-full rounded-full overflow-hidden" style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }}>
+              <div className="h-full transition-all duration-1000" style={{ width: `${Math.min(100, (user.xp / (user.level * 100)) * 100)}%`, background: isDark ? '#8fe8b2' : '#2ecc71' }}></div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mb-6">
         <DailyCheckIn />

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import dynamic from "next/dynamic";
 import React, { useRef, useState } from "react";
 import {
   Menu,
@@ -12,6 +13,12 @@ import {
   BookOpen,
   ArrowRight,
 } from "lucide-react";
+
+// Three.js touches `window` on import, so it must stay client-only.
+const HeroScene = dynamic(() => import("./components/hero-scene"), {
+  ssr: false,
+  loading: () => null,
+});
 
 export default function Home() {
   const router = useRouter();
@@ -111,12 +118,16 @@ export default function Home() {
             <motion.button
               whileHover={{
                 scale: 1.04,
-                boxShadow: "0 0 20px rgba(31,191,117,0.4)",
+                boxShadow: "0 0 28px rgba(92,242,255,0.45)",
               }}
               whileTap={{ scale: 0.96 }}
               onClick={() => router.push("/login")}
-              className="rounded-xl px-4 py-2 sm:px-6 sm:py-2 text-sm sm:text-base font-bold text-[#012016] shadow-lg"
-              style={{ background: "linear-gradient(145deg,#1fbf75,#108a54)" }}
+              className="rounded-xl px-4 py-2 sm:px-6 sm:py-2 text-sm sm:text-base font-bold text-[#012016]"
+              style={{
+                background: "linear-gradient(135deg,#6effc4 0%,#1fbf75 55%,#108a54 100%)",
+                boxShadow:
+                  "0 6px 20px rgba(31,191,117,0.4), 0 0 0 1px rgba(110,255,196,0.45) inset",
+              }}
             >
               Login
             </motion.button>
@@ -164,13 +175,26 @@ export default function Home() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.4 }}
         transition={{ duration: 0.8 }}
-        className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 text-center pt-24"
+        className="relative z-10 flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 text-center pt-24"
       >
+        {/* 3D breathing blob -- mounts client-side, paints behind the headline. */}
+        <HeroScene />
+
+        {/* Soft radial darken so the headline always reads against the blob. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(ellipse at center, rgba(2,15,9,0.55) 0%, rgba(2,15,9,0.15) 45%, rgba(2,15,9,0) 75%)",
+          }}
+        />
+
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.6 }}
-          className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs sm:text-sm text-[#c7ffdc]/90"
+          className="relative mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs sm:text-sm text-[#c7ffdc]/90"
         >
           <Sparkles size={14} />
           Your daily space for mindful growth
@@ -179,27 +203,41 @@ export default function Home() {
         <motion.h1
           animate={{ y: [0, -10, 0] }}
           transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          className="text-4xl sm:text-6xl md:text-7xl font-bold leading-tight text-[#c7ffdc] drop-shadow-lg"
-          style={{ fontFamily: "'Lora', serif", letterSpacing: "-0.02em" }}
+          className="relative text-4xl sm:text-6xl md:text-7xl font-bold leading-tight text-[#c7ffdc] drop-shadow-lg"
+          style={{
+            fontFamily: "'Lora', serif",
+            letterSpacing: "-0.02em",
+            textShadow: "0 4px 30px rgba(2,15,9,0.6)",
+          }}
         >
           Grow Within,{" "}
-          <span className="bg-gradient-to-r from-[#60d394] to-[#9df2c8] bg-clip-text text-transparent">
+          <span className="gf-holo-text">
             Flow Beyond
           </span>
         </motion.h1>
 
-        <p className="mt-6 max-w-xl text-base sm:text-lg md:text-xl leading-relaxed text-[#9df2c8]/90 opacity-90">
+        <p
+          className="relative mt-6 max-w-xl text-base sm:text-lg md:text-xl leading-relaxed text-[#9df2c8]/90 opacity-90"
+          style={{ textShadow: "0 2px 16px rgba(2,15,9,0.55)" }}
+        >
           A space to reflect, recharge, and realign with yourself. Track habits,
           log moods, and let AI guide your growth. 🌿
         </p>
 
-        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+        <div className="relative mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
           <motion.button
-            whileHover={{ scale: 1.05 }}
+            whileHover={{
+              scale: 1.05,
+              boxShadow: "0 18px 50px rgba(31,191,117,0.55), 0 0 36px rgba(92,242,255,0.4)",
+            }}
             whileTap={{ scale: 0.97 }}
-            onClick={() => router.push("/register")}
-            className="group inline-flex items-center gap-2 rounded-2xl px-7 py-3.5 text-base font-bold text-[#012016] shadow-xl"
-            style={{ background: "linear-gradient(145deg,#1fbf75,#108a54)" }}
+            onClick={() => router.push("/signup")}
+            className="group inline-flex items-center gap-2 rounded-2xl px-7 py-3.5 text-base font-bold text-[#012016]"
+            style={{
+              background: "linear-gradient(135deg,#6effc4 0%,#1fbf75 55%,#108a54 100%)",
+              boxShadow:
+                "0 14px 38px rgba(31,191,117,0.45), 0 0 0 1px rgba(110,255,196,0.55) inset",
+            }}
           >
             Get started
             <ArrowRight

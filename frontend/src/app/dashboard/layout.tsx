@@ -1,13 +1,41 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Sidebar from "@/app/components/sidebar";
 import CommandPalette from "@/app/components/command-palette";
 import Onboarding from "@/app/components/onboarding";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import dynamic from "next/dynamic";
 import { Menu } from "lucide-react";
 import { clearAuth, isJwtExpired } from "@/lib/auth";
+import { isProfessionalRole, type UserRole } from "@/lib/role";
+import { jwtDecode } from "jwt-decode";
 import { ThemeContext } from "@/app/dashboard/theme-context";
+import type { SceneVariant } from "@/app/components/ambient-scene";
+import { ErrorBoundary } from "@/app/components/error-boundary";
+
+// Three.js touches `window` on import; keep this client-only.
+const AmbientScene = dynamic(
+  () => import("@/app/components/ambient-scene"),
+  { ssr: false, loading: () => null },
+);
+
+/** Map a dashboard route to the 3D shape that fits its purpose.
+ *  Every route gets a unique variant -- no shape is reused anywhere. */
+function variantForPath(path: string): SceneVariant {
+  if (path.startsWith("/dashboard/profile")) return "octa";
+  if (path.startsWith("/dashboard/journal")) return "ribbon";
+  if (path.startsWith("/dashboard/achievements")) return "crystal";
+  if (path.startsWith("/dashboard/to-do")) return "cube";
+  if (path.startsWith("/dashboard/habit-tracker")) return "spiral";
+  if (path.startsWith("/dashboard/goals")) return "cone";
+  if (path.startsWith("/dashboard/focus")) return "torus";
+  if (path.startsWith("/dashboard/calendar")) return "cylinder";
+  if (path.startsWith("/dashboard/settings")) return "tetra";
+  if (path.startsWith("/dashboard/coach")) return "particles";
+  if (path.startsWith("/dashboard/insights")) return "lattice";
+  return "orbit"; // dashboard home (everything-orbits-around-you)
+}
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -15,6 +43,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [isAuthChecked, setIsAuthChecked] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
+  const sceneVariant = useMemo(
+    () => variantForPath(pathname ?? "/dashboard"),
+    [pathname],
+  );
 
   const toggleTheme = () =>
     setTheme((prev) => (prev === "light" ? "dark" : "light"));
@@ -36,6 +69,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   // Auth guard. We not only require a token but also check that it isn't
   // expired -- otherwise the user lingers on the dashboard until the first
   // failing request, which is a confusing UX.
+  //
+  // We also enforce a SOFT role boundary: providers belong inside
+  // /dashboard/provider, patients belong outside it. Either side trying
+  // to navigate to the other's subtree is bounced to their own home.
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     if (!token || isJwtExpired(token)) {
@@ -43,6 +80,25 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       router.replace("/login");
       return;
     }
+
+    // Role gating.
+    let role: UserRole = "patient";
+    try {
+      const payload = jwtDecode<{ role?: UserRole }>(token);
+      role = payload.role ?? "patient";
+    } catch {
+      /* fall through with default */
+    }
+    const inProviderArea = pathname?.startsWith("/dashboard/provider") ?? false;
+    if (isProfessionalRole(role) && !inProviderArea) {
+      router.replace("/dashboard/provider");
+      return;
+    }
+    if (!isProfessionalRole(role) && inProviderArea) {
+      router.replace("/dashboard");
+      return;
+    }
+
     setIsAuthChecked(true);
 
     // Re-check on tab focus + at a 60s interval so a session that expires
@@ -60,7 +116,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       window.clearInterval(interval);
       window.removeEventListener("focus", recheck);
     };
-  }, [router]);
+  }, [router, pathname]);
 
   // Close drawer when route changes / on resize up
   useEffect(() => {
@@ -94,7 +150,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       }}
     >
       <div
-        className="flex min-h-screen"
+        className="relative flex min-h-screen"
         style={{
           background: isDark
             ? "linear-gradient(180deg,#06130f,#0f2a21)"
@@ -103,11 +159,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           transition: "background 500ms ease, color 300ms ease",
         }}
       >
+        {/* Ambient 3D scene -- fixed behind sidebar + content. Variant is
+            driven by the active route so each surface gets its own shape. */}
+        <AmbientScene
+          variant={sceneVariant}
+          mode={isDark ? "dark" : "light"}
+          intensity={0.55}
+          position="background"
+        />
+
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <CommandPalette />
         <Onboarding />
 
-        <div className="flex flex-1 flex-col min-w-0">
+        <div className="relative z-10 flex flex-1 flex-col min-w-0">
           {/* Mobile topbar */}
           <header
             className="md:hidden sticky top-0 z-20 flex items-center justify-between px-4 py-3 border-b"
@@ -143,7 +208,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             className="flex-1 overflow-y-auto gf-scroll px-4 py-5 md:px-6 md:py-6 lg:px-8"
             style={{ minWidth: 0 }}
           >
-            {children}
+            <ErrorBoundary label="this page">{children}</ErrorBoundary>
           </main>
         </div>
       </div>

@@ -11,6 +11,8 @@ import { CreateHabitLogDto } from './dto/create-habit-log.dto';
 import { UpdateHabitLogDto } from './dto/update-habit-log.dto';
 import { HabitLog } from './entities/habit-log.entity';
 import { HabitStatus } from './enums/habit-status.enum';
+import { GamificationService } from '../gamification/gamification.service';
+import { UserHabit } from '../user-habits/entities/user-habit.entity';
 
 @Injectable()
 export class HabitLogsService {
@@ -19,6 +21,9 @@ export class HabitLogsService {
   constructor(
     @InjectRepository(HabitLog)
     private readonly habitLogsRepository: Repository<HabitLog>,
+    @InjectRepository(UserHabit)
+    private readonly userHabitsRepository: Repository<UserHabit>,
+    private readonly gamificationService: GamificationService,
   ) {}
 
   async create(dto: CreateHabitLogDto): Promise<HabitLog> {
@@ -29,7 +34,16 @@ export class HabitLogsService {
         status: dto.status ?? HabitStatus.COMPLETED,
         moodScore: dto.moodScore ?? 5,
       });
-      return await this.habitLogsRepository.save(newLog);
+      const savedLog = await this.habitLogsRepository.save(newLog);
+
+      if (savedLog.status === HabitStatus.COMPLETED) {
+        const userHabit = await this.userHabitsRepository.findOne({ where: { userHabitId: dto.userHabitId }});
+        if (userHabit) {
+          await this.gamificationService.awardXp(userHabit.userId, 5); // 5 XP for habit
+        }
+      }
+
+      return savedLog;
     } catch (err) {
       this.logger.error('Failed to create habit log', err as Error);
       throw new InternalServerErrorException('Could not create habit log');
@@ -41,7 +55,10 @@ export class HabitLogsService {
   }
 
   async findOne(logId: number): Promise<HabitLog> {
-    const log = await this.habitLogsRepository.findOne({ where: { logId } });
+    const log = await this.habitLogsRepository.findOne({ 
+      where: { logId },
+      relations: ['userHabit']
+    });
     if (!log) {
       throw new NotFoundException(`HabitLog with ID ${logId} not found`);
     }
@@ -50,10 +67,22 @@ export class HabitLogsService {
 
   async update(id: number, dto: UpdateHabitLogDto): Promise<HabitLog> {
     const log = await this.findOne(id);
+    const oldStatus = log.status;
+    
     if (dto.date !== undefined) log.date = dto.date;
     if (dto.status !== undefined) log.status = dto.status;
     if (dto.moodScore !== undefined) log.moodScore = dto.moodScore;
-    return this.habitLogsRepository.save(log);
+    
+    const savedLog = await this.habitLogsRepository.save(log);
+
+    if (oldStatus !== HabitStatus.COMPLETED && savedLog.status === HabitStatus.COMPLETED) {
+      const userHabit = await this.userHabitsRepository.findOne({ where: { userHabitId: savedLog.userHabit.userHabitId }});
+      if (userHabit) {
+        await this.gamificationService.awardXp(userHabit.userId, 5);
+      }
+    }
+
+    return savedLog;
   }
 
   async remove(logId: number): Promise<{ message: string }> {

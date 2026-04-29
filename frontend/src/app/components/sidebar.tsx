@@ -21,8 +21,16 @@ import {
   Target,
   Calendar,
   Settings,
+  Stethoscope,
+  ClipboardList,
+  Briefcase,
+  FileText,
+  Users,
+  LifeBuoy,
 } from "lucide-react";
 import { useTheme } from "@/app/dashboard/theme-context";
+
+type Role = "patient" | "psychiatrist" | "psychologist";
 
 type NavItem = {
   href: string;
@@ -30,20 +38,39 @@ type NavItem = {
   icon: React.ComponentType<{ size?: number; className?: string }>;
 };
 
-const NAV_ITEMS: NavItem[] = [
+// Patient-facing app surface (the original wellness suite + new Care).
+const PATIENT_NAV: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/to-do", label: "To Do List", icon: CheckSquare },
   { href: "/dashboard/habit-tracker", label: "Habit Tracker", icon: Heart },
   { href: "/dashboard/goals", label: "Goals", icon: Target },
   { href: "/dashboard/journal", label: "Growth Journal", icon: BookOpen },
   { href: "/dashboard/focus", label: "Focus Timer", icon: Timer },
+  { href: "/dashboard/sleep", label: "Sleep", icon: Moon },
   { href: "/dashboard/calendar", label: "Calendar", icon: Calendar },
   { href: "/dashboard/coach", label: "Coach", icon: Sparkles },
   { href: "/dashboard/insights", label: "Insights", icon: TrendingUp },
   { href: "/dashboard/achievements", label: "Achievements", icon: Trophy },
+  { href: "/dashboard/buddies", label: "Buddies", icon: Users },
+  { href: "/dashboard/reports", label: "Weekly Reports", icon: FileText },
+  { href: "/dashboard/care", label: "Care", icon: Stethoscope },
+  { href: "/dashboard/appointments", label: "Appointments", icon: ClipboardList },
+  { href: "/crisis", label: "Crisis support", icon: LifeBuoy },
   { href: "/dashboard/profile", label: "Profile", icon: User },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
+
+// Provider surface -- kept tight on purpose. Practice + public profile only.
+const PROVIDER_NAV: NavItem[] = [
+  { href: "/dashboard/provider", label: "Practice", icon: Briefcase },
+  { href: "/dashboard/provider/profile", label: "Public profile", icon: User },
+  { href: "/crisis", label: "Crisis support", icon: LifeBuoy },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings },
+];
+
+function navForRole(role: Role): NavItem[] {
+  return role === "psychiatrist" || role === "psychologist" ? PROVIDER_NAV : PATIENT_NAV;
+}
 
 interface SidebarProps {
   open: boolean;
@@ -56,13 +83,14 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === "dark";
 
-  const [user, setUser] = useState<{ name?: string; email?: string }>({});
+  const [user, setUser] = useState<{ name?: string; email?: string; role?: Role }>({});
+  const navItems = navForRole(user.role ?? "patient");
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     if (!token) return;
     try {
-      const payload = jwtDecode<{ name?: string; email?: string }>(token);
+      const payload = jwtDecode<{ name?: string; email?: string; role?: Role }>(token);
       setUser(payload);
     } catch {
       /* ignore bad token */
@@ -108,9 +136,9 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
               className="flex h-9 w-9 items-center justify-center rounded-xl"
               style={{
                 background:
-                  "linear-gradient(145deg,#1fbf75,#108a54)",
+                  "linear-gradient(135deg,#6effc4 0%,#1fbf75 55%,#108a54 100%)",
                 color: "#052818",
-                boxShadow: "0 6px 18px rgba(16,138,84,0.35)",
+                boxShadow: "0 6px 18px rgba(16,138,84,0.45), 0 0 18px rgba(110,255,196,0.35), inset 0 0 0 1px rgba(110,255,196,0.55)",
               }}
             >
               <Sparkles size={18} />
@@ -152,25 +180,28 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         {/* Nav */}
         <nav className="mt-4 flex-1 overflow-y-auto px-3 gf-scroll">
           <ul className="flex flex-col gap-1">
-            {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+            {navItems.map(({ href, label, icon: Icon }) => {
               const active = isActive(href);
               return (
                 <li key={href}>
                   <Link
                     href={href}
                     onClick={onClose}
-                    className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors"
+                    className="group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all"
                     style={{
                       background: active
                         ? isDark
-                          ? "rgba(143,232,178,0.12)"
-                          : "rgba(22,59,37,0.08)"
+                          ? "linear-gradient(90deg, rgba(110,255,196,0.18) 0%, rgba(92,242,255,0.06) 100%)"
+                          : "linear-gradient(90deg, rgba(31,191,117,0.18) 0%, rgba(92,242,255,0.06) 100%)"
                         : "transparent",
                       color: active
                         ? isDark
-                          ? "#8fe8b2"
-                          : "#163b25"
+                          ? "#c7ffdc"
+                          : "#0c4a2a"
                         : "inherit",
+                      boxShadow: active
+                        ? "inset 3px 0 0 0 #6effc4, 0 0 18px -4px rgba(92,242,255,0.45)"
+                        : "none",
                     }}
                   >
                     <Icon size={18} />
@@ -179,7 +210,8 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                       <span
                         className="ml-auto h-2 w-2 rounded-full"
                         style={{
-                          background: isDark ? "#8fe8b2" : "#163b25",
+                          background: "#6effc4",
+                          boxShadow: "0 0 10px #6effc4, 0 0 4px #ffffff",
                         }}
                       />
                     )}

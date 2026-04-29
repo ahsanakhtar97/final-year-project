@@ -13,7 +13,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
+
+const AmbientScene = dynamic(
+  () => import("../components/ambient-scene"),
+  { ssr: false, loading: () => null },
+);
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -36,19 +42,23 @@ export default function ForgotPassword() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-6"
+      className="relative min-h-screen flex items-center justify-center p-6 overflow-hidden"
       style={{
         background: "linear-gradient(135deg,#06130f 0%, #0f2a21 60%, #163b25 100%)",
         color: "#e7f7ee",
       }}
     >
+      {/* 3D ambient scene -- subtle wireframe icosahedron behind the form. */}
+      <AmbientScene variant="ring" mode="dark" intensity={0.7} position="hero" />
+
       <div
-        className="w-full max-w-md p-7 rounded-2xl"
+        className="relative z-10 w-full max-w-md p-7 rounded-2xl"
         style={{
-          background: "rgba(15,42,33,0.85)",
-          border: "1px solid rgba(174,240,201,0.10)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
+          background: "rgba(15,42,33,0.72)",
+          boxShadow:
+            "0 22px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(110,255,196,0.18), 0 0 40px -16px rgba(92,242,255,0.4)",
+          backdropFilter: "blur(16px) saturate(140%)",
+          WebkitBackdropFilter: "blur(16px) saturate(140%)",
         }}
       >
         <Link

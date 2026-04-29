@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+import { HabitLog } from '../habit-logs/entities/habit-log.entity';
 import { HabitStatus } from '../habit-logs/enums/habit-status.enum';
 import { Habit } from '../habits/entities/habit.entity';
 import { CreateUserHabitDto } from './dto/create-user-habit.dto';
@@ -71,10 +72,25 @@ export class UserHabitsService {
   }
 
   async revokeHabit(userId: number, habitId: number): Promise<{ message: string }> {
-    const result = await this.userHabitRepository.delete({ userId, habitId });
-    if (result.affected === 0) {
+    // Find the join row first so we can clean up its logs explicitly. This
+    // makes the operation safe even on schemas where the FK from habit_logs
+    // -> user_habits hasn't been migrated to ON DELETE CASCADE yet.
+    const userHabit = await this.userHabitRepository.findOne({
+      where: { userId, habitId },
+    });
+    if (!userHabit) {
       throw new NotFoundException('Habit not found for this user');
     }
+
+    await this.userHabitRepository.manager.transaction(async (tx) => {
+      // Use the typed repository so we don't depend on TypeORM's auto-named
+      // FK column (which varies with the active naming strategy).
+      await tx.delete(HabitLog, {
+        userHabit: { userHabitId: userHabit.userHabitId },
+      });
+      await tx.delete(UserHabit, { userHabitId: userHabit.userHabitId });
+    });
+
     return { message: 'Habit successfully removed' };
   }
 

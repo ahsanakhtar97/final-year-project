@@ -5,18 +5,27 @@
  */
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { Compass, Home, ArrowLeft } from "lucide-react";
+
+const AmbientScene = dynamic(
+  () => import("./components/ambient-scene"),
+  { ssr: false, loading: () => null },
+);
 
 export default function NotFound() {
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-6"
+      className="relative min-h-screen flex items-center justify-center p-6 overflow-hidden"
       style={{
         background: "linear-gradient(180deg,#eafff0,#cdecd4)",
         color: "#123716",
       }}
     >
-      <div className="text-center max-w-md">
+      {/* 3D ambient scene -- wireframe icosahedron, off-track / lost feel. */}
+      <AmbientScene variant="wire" mode="light" intensity={0.6} position="hero" />
+
+      <div className="relative z-10 text-center max-w-md">
         <div
           className="mx-auto h-16 w-16 rounded-full flex items-center justify-center mb-4"
           style={{ background: "#163b25", color: "#ffffff" }}

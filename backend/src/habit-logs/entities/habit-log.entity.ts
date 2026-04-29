@@ -7,7 +7,11 @@ export class HabitLog {
   logId: number;
 
   // Ensure this relation name matches what you use in create()
-  @ManyToOne(() => UserHabit, (userHabit) => userHabit.habitLogs) // Change .logs to .habitLogs
+  // Cascade so revoking a user's habit doesn't leave orphaned logs (and
+  // doesn't fail the parent delete with a FK constraint error).
+  @ManyToOne(() => UserHabit, (userHabit) => userHabit.habitLogs, {
+    onDelete: 'CASCADE',
+  })
   userHabit: UserHabit;
 
   @Column({ type: 'date' })

@@ -319,3 +319,213 @@ body {
 @layer base {
   * { @apply border-border; }
 }
+
+/* =========================================================
+   Holo-glass design tokens & utilities
+   "Futuristic" layer: neon palette, gradient borders, soft
+   glows. Layered on top of the base tokens above so existing
+   classes (.gf-card, .gf-btn-primary, .gf-input, ...) inherit
+   the new look without changing any markup.
+   ========================================================= */
+:root {
+  --gf-neon-cyan:  #5cf2ff;
+  --gf-neon-mint:  #6effc4;
+  --gf-neon-aqua:  #9df2c8;
+  --gf-glass-bg:        rgba(255, 255, 255, 0.55);
+  --gf-glass-bg-soft:   rgba(255, 255, 255, 0.32);
+  --gf-glass-blur:      18px;
+  --gf-holo-border:     linear-gradient(135deg, #6effc4 0%, #5cf2ff 45%, #9df2c8 100%);
+  --gf-holo-border-dim: linear-gradient(135deg, rgba(110,255,196,0.55) 0%, rgba(92,242,255,0.55) 50%, rgba(157,242,200,0.55) 100%);
+  --gf-neon-glow:    0 0 22px rgba(92, 242, 255, 0.35), 0 0 4px rgba(110, 255, 196, 0.5);
+  --gf-neon-glow-sm: 0 0 14px rgba(92, 242, 255, 0.28);
+}
+.dark {
+  --gf-glass-bg:      rgba(10, 30, 22, 0.55);
+  --gf-glass-bg-soft: rgba(10, 30, 22, 0.32);
+  --gf-neon-glow:    0 0 28px rgba(92, 242, 255, 0.55), 0 0 6px rgba(110, 255, 196, 0.7);
+  --gf-neon-glow-sm: 0 0 16px rgba(92, 242, 255, 0.4);
+}
+
+@layer components {
+  /* ----- Glass card with gradient border ----- */
+  /* Use as a polished wrapper. Renders a 1px holographic edge via
+     mask-composite trick so the gradient sits cleanly on the border. */
+  .gf-glass-card {
+    position: relative;
+    background: var(--gf-glass-bg);
+    backdrop-filter: blur(var(--gf-glass-blur)) saturate(140%);
+    -webkit-backdrop-filter: blur(var(--gf-glass-blur)) saturate(140%);
+    border-radius: var(--gf-radius);
+    border: 1px solid transparent;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    isolation: isolate;
+  }
+  .gf-glass-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: var(--gf-holo-border-dim);
+    -webkit-mask: linear-gradient(#000, #000) content-box,
+                  linear-gradient(#000, #000);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Standalone neon edge -- drop on any rounded element to add a
+     subtle holographic outline without changing its background. */
+  .gf-neon-edge {
+    position: relative;
+  }
+  .gf-neon-edge::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: var(--gf-holo-border-dim);
+    -webkit-mask: linear-gradient(#000, #000) content-box,
+                  linear-gradient(#000, #000);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Hover-only neon glow (cheap drop-in for buttons, list rows). */
+  .gf-glow-hover {
+    transition: transform 180ms var(--gf-ease),
+                box-shadow 220ms var(--gf-ease),
+                border-color 180ms var(--gf-ease);
+  }
+  .gf-glow-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--gf-shadow-lg), var(--gf-neon-glow-sm);
+  }
+
+  /* Tabular monospace for stats / numerics. */
+  .gf-mono {
+    font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+
+  /* Holographic shimmer text -- use on hero headlines. */
+  .gf-holo-text {
+    background: linear-gradient(
+      110deg,
+      #6effc4 0%, #9df2c8 28%, #5cf2ff 50%, #9df2c8 72%, #6effc4 100%
+    );
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+            background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    animation: gf-holo-shift 9s linear infinite;
+  }
+
+  /* Subtle scanline overlay -- opt-in via class. */
+  .gf-scanlines {
+    position: relative;
+  }
+  .gf-scanlines::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0) 0px,
+      rgba(255, 255, 255, 0) 2px,
+      rgba(255, 255, 255, 0.025) 3px,
+      rgba(255, 255, 255, 0) 4px
+    );
+    pointer-events: none;
+    border-radius: inherit;
+  }
+
+  /* ----- Layered upgrades to existing classes ----- */
+  /* These come AFTER the original definitions so they cascade-win
+     within the same specificity. We keep all original properties
+     and just punch up the visual feedback. */
+  .gf-card {
+    box-shadow: var(--gf-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+  .dark .gf-card {
+    background: linear-gradient(180deg,
+                  rgba(15, 36, 31, 0.92),
+                  rgba(11, 29, 24, 0.92));
+    backdrop-filter: blur(8px) saturate(120%);
+    -webkit-backdrop-filter: blur(8px) saturate(120%);
+  }
+  .gf-card-hover:hover {
+    box-shadow: var(--gf-shadow-lg), var(--gf-neon-glow-sm);
+    border-color: rgba(110, 255, 196, 0.22);
+  }
+
+  .gf-btn-primary {
+    background: linear-gradient(135deg, #6effc4 0%, #1fbf75 55%, #108a54 100%);
+    box-shadow: 0 8px 26px rgba(31, 191, 117, 0.4),
+                inset 0 0 0 1px rgba(110, 255, 196, 0.45);
+    letter-spacing: 0.01em;
+  }
+  .gf-btn-primary:hover:not(:disabled) {
+    box-shadow: 0 12px 34px rgba(31, 191, 117, 0.55),
+                0 0 28px rgba(92, 242, 255, 0.35),
+                inset 0 0 0 1px rgba(110, 255, 196, 0.6);
+  }
+
+  .gf-btn-ghost {
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .dark .gf-btn-ghost {
+    background: rgba(143, 232, 178, 0.06);
+  }
+  .gf-btn-ghost:hover:not(:disabled) {
+    background: rgba(143, 232, 178, 0.12);
+    border-color: rgba(110, 255, 196, 0.4);
+    box-shadow: var(--gf-neon-glow-sm);
+  }
+
+  /* Inputs: neon focus ring */
+  .gf-input:focus,
+  .gf-textarea:focus,
+  .gf-select:focus {
+    border-color: var(--gf-green-400);
+    box-shadow: 0 0 0 3px rgba(110, 255, 196, 0.25),
+                0 0 18px rgba(92, 242, 255, 0.2);
+  }
+  .dark .gf-input,
+  .dark .gf-textarea,
+  .dark .gf-select {
+    background: rgba(11, 29, 24, 0.7);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+
+  /* Chip glow */
+  .gf-chip {
+    background: linear-gradient(135deg,
+                  rgba(110, 255, 196, 0.18),
+                  rgba(92, 242, 255, 0.14));
+    border-color: rgba(110, 255, 196, 0.35);
+    color: #052818;
+  }
+  .dark .gf-chip {
+    color: var(--gf-green-200);
+    background: linear-gradient(135deg,
+                  rgba(110, 255, 196, 0.10),
+                  rgba(92, 242, 255, 0.08));
+    border-color: rgba(110, 255, 196, 0.25);
+  }
+}
+
+/* Holo shimmer animation (used by .gf-holo-text). */
+@keyframes gf-holo-shift {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 220% 50%; }
+}
