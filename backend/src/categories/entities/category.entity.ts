@@ -1,4 +1,4 @@
-import { Habit } from "src/habits/entities/habit.entity";
+import { Habit } from "../../habits/entities/habit.entity";
 import { Column, Entity, JoinColumn, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('categories')

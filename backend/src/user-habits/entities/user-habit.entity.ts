@@ -1,7 +1,7 @@
 
-import { HabitLog } from "src/habit-logs/entities/habit-log.entity";
-import { Habit } from "src/habits/entities/habit.entity";
-import { User } from "src/users/entities/user.entity";
+import { HabitLog } from "../../habit-logs/entities/habit-log.entity";
+import { Habit } from "../../habits/entities/habit.entity";
+import { User } from "../../users/entities/user.entity";
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('user_habits')

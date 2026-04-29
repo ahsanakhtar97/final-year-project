@@ -1,5 +1,5 @@
-import { Category } from "src/categories/entities/category.entity";
-import { UserHabit } from "src/user-habits/entities/user-habit.entity";
+import { Category } from "../../categories/entities/category.entity";
+import { UserHabit } from "../../user-habits/entities/user-habit.entity";
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('habits')

@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne } from 'typeorm';
-import { UserHabit } from 'src/user-habits/entities/user-habit.entity';
+import { UserHabit } from '../../user-habits/entities/user-habit.entity';
 
 @Entity('habit_logs')
 export class HabitLog {
