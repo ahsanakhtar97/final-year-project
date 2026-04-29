@@ -1,13 +1,27 @@
 {
-  "experimentalServices": {
-    "frontend": {
-      "entrypoint": "frontend",
-      "routePrefix": "/",
-      "framework": "nextjs"
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/api/index.ts",
+      "use": "@vercel/node"
     },
-    "backend": {
-      "entrypoint": "backend",
-      "routePrefix": "/_/backend"
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/next"
     }
-  }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/backend/api/index.ts"
+    },
+    {
+      "source": "/docs(.*)",
+      "destination": "/backend/api/index.ts"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/frontend/$1"
+    }
+  ]
 }

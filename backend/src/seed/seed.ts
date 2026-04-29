@@ -16,7 +16,7 @@
  */
 
 import { NestFactory } from '@nestjs/core';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { DataSource } from 'typeorm';
 
 import { AppModule } from '../app.module';

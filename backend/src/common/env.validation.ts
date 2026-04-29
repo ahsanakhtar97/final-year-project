@@ -33,26 +33,35 @@ class EnvironmentVariables {
   PORT: number = 3000;
 
   // --- Database ---
+  @IsOptional()
+  @IsString()
+  DATABASE_URL?: string;
+
+  @IsOptional()
   @IsString()
   @MinLength(1)
-  POSTGRES_HOST!: string;
+  POSTGRES_HOST?: string;
 
+  @IsOptional()
   @IsInt()
   @Min(1)
   @Max(65535)
-  POSTGRES_PORT!: number;
+  POSTGRES_PORT?: number;
 
+  @IsOptional()
   @IsString()
   @MinLength(1)
-  POSTGRES_USER!: string;
+  POSTGRES_USER?: string;
 
+  @IsOptional()
   @IsString()
   @MinLength(1)
-  POSTGRES_PASSWORD!: string;
+  POSTGRES_PASSWORD?: string;
 
+  @IsOptional()
   @IsString()
   @MinLength(1)
-  POSTGRES_DB!: string;
+  POSTGRES_DB?: string;
 
   // --- Auth ---
   @IsString()

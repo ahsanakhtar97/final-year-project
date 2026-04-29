@@ -4,7 +4,7 @@ import axios, { AxiosInstance } from "axios";
 // bare paths like `/auth/login` and `/users/:id`, which get prefixed here.
 const API_HOST =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
-  "http://localhost:3000";
+  (process.env.NODE_ENV === "production" ? "" : "http://localhost:3000");
 
 const api: AxiosInstance = axios.create({
   baseURL: `${API_HOST}/api/v1`,
