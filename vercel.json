@@ -18,10 +18,6 @@
     {
       "source": "/docs(.*)",
       "destination": "/backend/api/index.ts"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/frontend/$1"
     }
   ]
 }
