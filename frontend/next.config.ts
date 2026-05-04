@@ -1,10 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Standalone output bundles only the dependencies the app actually uses,
-  // letting the Docker runtime image stay small. Local `npm run dev` is
-  // unaffected by this setting.
-  output: "standalone",
+  // "standalone" output is for Docker/self-hosted only and breaks Vercel's
+  // dynamic-route serverless function generation. Leave output unset so
+  // @vercel/next can correctly deploy each page as its own function.
 };
 
 export default nextConfig;
