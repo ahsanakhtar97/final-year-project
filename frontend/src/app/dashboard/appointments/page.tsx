@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "react-toastify";
-import { Calendar, Clock, X, Briefcase, Plus } from "lucide-react";
+import { Calendar, Clock, X, Briefcase, Plus, Video } from "lucide-react";
 import {
   getMyAppointments,
   updateAppointment,
@@ -141,16 +141,26 @@ function Section({
                   </p>
                 )}
               </div>
-              {cancellable && (
-                <button
-                  type="button"
-                  onClick={() => onCancel(a.appointmentId)}
-                  className="gf-btn gf-btn-ghost"
-                  aria-label="Cancel"
-                >
-                  <X size={14} /> Cancel
-                </button>
-              )}
+              <div className="flex flex-col gap-2 shrink-0">
+                {a.status === "confirmed" && (
+                  <Link
+                    href={`/dashboard/appointments/${a.appointmentId}/call`}
+                    className="gf-btn gf-btn-primary"
+                  >
+                    <Video size={14} /> Join Call
+                  </Link>
+                )}
+                {cancellable && (
+                  <button
+                    type="button"
+                    onClick={() => onCancel(a.appointmentId)}
+                    className="gf-btn gf-btn-ghost"
+                    aria-label="Cancel"
+                  >
+                    <X size={14} /> Cancel
+                  </button>
+                )}
+              </div>
             </div>
           );
         })}

@@ -26,6 +26,7 @@ import { ReportsModule } from './reports/reports.module';
 import { BuddiesModule } from './buddies/buddies.module';
 import { AdminModule } from './admin/admin.module';
 import { SleepModule } from './sleep/sleep.module';
+import { MoodModule } from './mood/mood.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
@@ -74,6 +75,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     BuddiesModule,
     AdminModule,
     SleepModule,
+    MoodModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [AppController, DashboardController],
