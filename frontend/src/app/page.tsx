@@ -437,13 +437,11 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-            {/* connecting line (desktop) */}
             <div
               aria-hidden
               className="hidden md:block absolute top-10 left-[16.66%] right-[16.66%] h-px"
               style={{ background: "linear-gradient(90deg, transparent, rgba(110,255,196,0.3), transparent)" }}
             />
-
             {HOW_IT_WORKS.map(({ step, title, desc }, i) => (
               <motion.div
                 key={step}
@@ -499,9 +497,9 @@ export default function Home() {
 
         <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
           {[
-            { label: "Ad-free forever",      icon: "🚫" },
-            { label: "Privacy first",         icon: "🔒" },
-            { label: "Student focused",       icon: "🎓" },
+            { label: "Ad-free forever", icon: "🚫" },
+            { label: "Privacy first",   icon: "🔒" },
+            { label: "Student focused", icon: "🎓" },
           ].map(({ label, icon }) => (
             <div
               key={label}
@@ -550,7 +548,6 @@ export default function Home() {
                 className="flex-1 w-full max-w-xs rounded-2xl border border-white/10 p-7 text-center backdrop-blur"
                 style={{ background: "rgba(10,45,30,0.7)", boxShadow: "0 10px 30px rgba(0,0,0,0.3)" }}
               >
-                {/* Avatar initials */}
                 <div
                   className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold"
                   style={{
@@ -560,7 +557,7 @@ export default function Home() {
                     fontFamily: "'Lora', serif",
                   }}
                 >
-                  {name.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                  {name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
                 </div>
                 <h3 className="text-lg font-bold text-[#c7ffdc]" style={{ fontFamily: "'Lora', serif" }}>
                   {name}
@@ -611,7 +608,7 @@ export default function Home() {
             hello@growflow.app
           </a>
           <a
-            href="https://github.com/ahsanakhtar"
+            href="https://github.com/ahsanakhtar97/final-year-project"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-6 py-3 text-base font-semibold text-[#c7ffdc] backdrop-blur hover:bg-white/10 transition-colors"
@@ -622,7 +619,7 @@ export default function Home() {
         </div>
       </motion.section>
 
-      {/* ── CTA banner ── */}
+      {/* ── CTA Banner ── */}
       <motion.section
         initial={{ opacity: 0, scale: 0.97 }}
         whileInView={{ opacity: 1, scale: 1 }}
@@ -667,13 +664,11 @@ export default function Home() {
       >
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            {/* Brand */}
             <div className="flex items-center gap-2">
               <Image src="/logo3.png" width={32} height={32} alt="GrowFlow" className="h-8 w-8 object-contain opacity-80" />
               <span className="text-base font-bold text-[#c7ffdc]/80" style={{ fontFamily: "'Lora', serif" }}>GrowFlow</span>
             </div>
 
-            {/* Nav links */}
             <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-[#9df2c8]/60">
               {navLinks.map(({ label, ref }) => (
                 <button key={label} onClick={() => scrollToSection(ref)} className="hover:text-[#9df2c8] transition-colors">
@@ -682,7 +677,6 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Team names */}
             <div className="text-xs text-[#9df2c8]/40 text-center md:text-right">
               <div className="mb-1 text-[#9df2c8]/60 font-medium">Developed by</div>
               {TEAM.map(({ name, roll }) => (
