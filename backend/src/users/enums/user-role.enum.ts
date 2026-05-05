@@ -2,6 +2,7 @@ export enum UserRole {
   PATIENT = 'patient',
   PSYCHIATRIST = 'psychiatrist',
   PSYCHOLOGIST = 'psychologist',
+  ADMIN = 'admin',
 }
 
 /** Roles that represent mental-health professionals (used for filters / guards). */
