@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "react-toastify";
-import { Calendar, Clock, Check, X, Send, Settings } from "lucide-react";
+import { Calendar, Clock, Check, X, Send, Settings, Video } from "lucide-react";
 import {
   getMyAppointments,
   updateAppointment,
@@ -92,7 +92,10 @@ export default function ProviderHome() {
           <Bucket title="Upcoming" tint={TONE.confirmed} rows={groups.upcoming}>
             {(a) => (
               <div className="flex gap-2 flex-wrap">
-                <button onClick={() => setStatus(a.appointmentId, "completed")} className="gf-btn gf-btn-primary">
+                <Link href={`/dashboard/appointments/${a.appointmentId}/call`} className="gf-btn gf-btn-primary">
+                  <Video size={14} /> Join Call
+                </Link>
+                <button onClick={() => setStatus(a.appointmentId, "completed")} className="gf-btn gf-btn-ghost">
                   <Check size={14} /> Mark completed
                 </button>
                 <button onClick={() => setStatus(a.appointmentId, "cancelled")} className="gf-btn gf-btn-ghost">
