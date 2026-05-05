@@ -6,13 +6,16 @@ import CommandPalette from "@/app/components/command-palette";
 import Onboarding from "@/app/components/onboarding";
 import { useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Menu } from "lucide-react";
+import Link from "next/link";
+import { Menu, Bell } from "lucide-react";
 import { clearAuth, isJwtExpired } from "@/lib/auth";
 import { isProfessionalRole, type UserRole } from "@/lib/role";
 import { jwtDecode } from "jwt-decode";
 import { ThemeContext } from "@/app/dashboard/theme-context";
 import type { SceneVariant } from "@/app/components/ambient-scene";
 import { ErrorBoundary } from "@/app/components/error-boundary";
+import { getUnreadCount } from "@/app/actions/reminders";
+import { getUserId } from "@/lib/utils";
 
 // Three.js touches `window` on import; keep this client-only.
 const AmbientScene = dynamic(
@@ -42,6 +45,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [isPrivate, setIsPrivate] = useState(false);
   const [isAuthChecked, setIsAuthChecked] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [unreadReminders, setUnreadReminders] = useState(0);
   const router = useRouter();
   const pathname = usePathname();
   const sceneVariant = useMemo(
@@ -117,6 +121,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       window.removeEventListener("focus", recheck);
     };
   }, [router, pathname]);
+
+  // Poll unread reminders count
+  useEffect(() => {
+    if (!isAuthChecked) return;
+    const uid = getUserId();
+    if (!uid) return;
+    const poll = () => getUnreadCount(uid).then(setUnreadReminders).catch(() => {});
+    poll();
+    const interval = window.setInterval(poll, 60_000);
+    return () => window.clearInterval(interval);
+  }, [isAuthChecked]);
 
   // Close drawer when route changes / on resize up
   useEffect(() => {
@@ -201,7 +216,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             >
               GrowFlow
             </span>
-            <span className="w-10" />
+            <Link
+              href="/dashboard/reminders"
+              className="gf-btn gf-btn-ghost !p-2 relative"
+              aria-label="Reminders"
+            >
+              <Bell size={20} />
+              {unreadReminders > 0 && (
+                <span
+                  className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold"
+                  style={{ background: "#e14c4c", color: "#fff" }}
+                >
+                  {unreadReminders > 9 ? "9+" : unreadReminders}
+                </span>
+              )}
+            </Link>
           </header>
 
           <main

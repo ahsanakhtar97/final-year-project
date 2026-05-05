@@ -29,6 +29,7 @@ import {
   LifeBuoy,
   Smile,
   Gamepad2,
+  Bell,
 } from "lucide-react";
 import { useTheme } from "@/app/dashboard/theme-context";
 
@@ -59,6 +60,7 @@ const PATIENT_NAV: NavItem[] = [
   { href: "/dashboard/reports", label: "Weekly Reports", icon: FileText },
   { href: "/dashboard/care", label: "Care", icon: Stethoscope },
   { href: "/dashboard/appointments", label: "Appointments", icon: ClipboardList },
+  { href: "/dashboard/reminders", label: "Reminders", icon: Bell },
   { href: "/crisis", label: "Crisis support", icon: LifeBuoy },
   { href: "/dashboard/profile", label: "Profile", icon: User },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
