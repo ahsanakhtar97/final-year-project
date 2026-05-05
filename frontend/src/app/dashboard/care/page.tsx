@@ -119,13 +119,21 @@ export default function CarePage() {
               key={p.userId}
               href={`/dashboard/care/${p.userId}`}
               className="gf-card gf-card-hover gf-glow-hover relative p-5 block"
+              style={{ opacity: p.verified ? 1 : 0.7 }}
             >
               <div className="flex items-start justify-between">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-wider opacity-70 capitalize flex items-center gap-1.5">
                     {p.role}
-                    {p.verified && (
+                    {p.verified ? (
                       <BadgeCheck size={14} style={{ color: "#6effc4" }} aria-label="Verified" />
+                    ) : (
+                      <span
+                        className="px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                        style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24" }}
+                      >
+                        Pending verification
+                      </span>
                     )}
                   </div>
                   <div className="text-lg font-bold mt-0.5">{p.name}</div>

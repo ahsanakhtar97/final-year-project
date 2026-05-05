@@ -98,41 +98,57 @@ export default function ProfessionalDetailPage() {
         </div>
       </header>
 
-      <form onSubmit={submit} className="gf-card p-6 space-y-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Calendar size={18} />
-          <h2 className="gf-h2">Request an appointment</h2>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {!pro.verified ? (
+        <div
+          className="gf-card p-6 flex items-start gap-4"
+          style={{ borderLeft: "4px solid #fbbf24", background: "rgba(251,191,36,0.06)" }}
+        >
+          <BadgeCheck size={22} className="shrink-0 mt-0.5" style={{ color: "#fbbf24" }} />
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider opacity-80 mb-1">Date</label>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required className="gf-input" />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider opacity-80 mb-1">Time</label>
-            <input type="time" value={time} onChange={(e) => setTime(e.target.value)} required className="gf-input" />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider opacity-80 mb-1">Duration (min)</label>
-            <select value={duration} onChange={(e) => setDuration(Number(e.target.value))} className="gf-select">
-              {[30, 45, 50, 60, 90].map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
+            <div className="font-semibold text-base mb-1">Not yet accepting appointments</div>
+            <p className="gf-muted text-sm leading-relaxed">
+              {pro.name.split(" ")[0]}&apos;s credentials are currently being reviewed by our admin team.
+              Once verified, you&apos;ll be able to book a session with them. Check back soon.
+            </p>
           </div>
         </div>
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider opacity-80 mb-1">A note for {pro.name.split(" ")[0]} (optional)</label>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={3}
-            placeholder="Anything you'd like them to know up front."
-            className="gf-textarea"
-          />
-        </div>
-        <button type="submit" disabled={submitting} className="gf-btn gf-btn-primary">
-          <Send size={14} /> {submitting ? "Sending…" : "Send request"}
-        </button>
-      </form>
+      ) : (
+        <form onSubmit={submit} className="gf-card p-6 space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Calendar size={18} />
+            <h2 className="gf-h2">Request an appointment</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider opacity-80 mb-1">Date</label>
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required className="gf-input" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider opacity-80 mb-1">Time</label>
+              <input type="time" value={time} onChange={(e) => setTime(e.target.value)} required className="gf-input" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider opacity-80 mb-1">Duration (min)</label>
+              <select value={duration} onChange={(e) => setDuration(Number(e.target.value))} className="gf-select">
+                {[30, 45, 50, 60, 90].map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider opacity-80 mb-1">A note for {pro.name.split(" ")[0]} (optional)</label>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={3}
+              placeholder="Anything you'd like them to know up front."
+              className="gf-textarea"
+            />
+          </div>
+          <button type="submit" disabled={submitting} className="gf-btn gf-btn-primary">
+            <Send size={14} /> {submitting ? "Sending…" : "Send request"}
+          </button>
+        </form>
+      )}
     </div>
   );
 }
