@@ -162,26 +162,35 @@ export default function MemoryGame() {
       {/* Grid */}
       {!won && (
         <div className="grid grid-cols-4 gap-2">
-          {cards.map((card) => (
-            <button
-              key={card.id}
-              onClick={() => flip(card.id)}
-              className="aspect-square rounded-xl text-3xl flex items-center justify-center transition-all duration-300 font-bold"
-              style={{
-                background: card.flipped || card.matched
-                  ? card.matched
+          {cards.map((card) => {
+            const revealed = card.flipped || card.matched;
+            return (
+              <button
+                key={card.id}
+                onClick={() => flip(card.id)}
+                className="aspect-square rounded-xl text-3xl flex items-center justify-center transition-all duration-200 font-bold select-none"
+                style={{
+                  background: card.matched
                     ? "rgba(110,255,196,0.25)"
-                    : "rgba(110,255,196,0.12)"
-                  : "rgba(110,255,196,0.07)",
-                border: `2px solid ${card.matched ? "#6effc4" : card.flipped ? "rgba(110,255,196,0.4)" : "rgba(110,255,196,0.1)"}`,
-                transform: card.flipped || card.matched ? "rotateY(0deg)" : "rotateY(90deg)",
-                cursor: card.matched ? "default" : "pointer",
-                boxShadow: card.matched ? "0 0 12px rgba(110,255,196,0.3)" : "none",
-              }}
-            >
-              {card.flipped || card.matched ? card.emoji : ""}
-            </button>
-          ))}
+                    : revealed
+                    ? "rgba(110,255,196,0.12)"
+                    : "rgba(110,255,196,0.10)",
+                  border: `2px solid ${
+                    card.matched
+                      ? "#6effc4"
+                      : revealed
+                      ? "rgba(110,255,196,0.5)"
+                      : "rgba(110,255,196,0.2)"
+                  }`,
+                  cursor: card.matched ? "default" : "pointer",
+                  boxShadow: card.matched ? "0 0 12px rgba(110,255,196,0.3)" : "none",
+                  fontSize: revealed ? "1.75rem" : "1.25rem",
+                }}
+              >
+                {revealed ? card.emoji : "🌱"}
+              </button>
+            );
+          })}
         </div>
       )}
 
