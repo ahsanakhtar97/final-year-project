@@ -321,7 +321,7 @@ export default function ToDoBoard() {
       taskStatus: TaskStatus.TO_DO, priority: v.priority,
       dueDate: v.dueDate ? new Date(v.dueDate).toISOString() : null,
     };
-    const optimistic: Task = { ...payload, taskId: tempId, completedAt: null, focusMinutes: 0, dueDate: payload.dueDate ?? null };
+    const optimistic: Task = { ...payload, taskId: tempId, completedAt: null, focusMinutes: 0, dueDate: payload.dueDate ?? null, priority: payload.priority ?? TaskPriority.MEDIUM };
     setColumns(prev => ({ ...prev, todo: [optimistic, ...prev.todo] }));
     setShowAddModal(false);
     try {
