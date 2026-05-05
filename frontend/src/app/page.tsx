@@ -115,7 +115,7 @@ const TEAM = [
 
 const STATS = [
   { value: "8+",   label: "Core features" },
-  { value: "3",    label: "Wellness games" },
+  { value: "7",    label: "Wellness games" },
   { value: "100%", label: "Ad-free" },
   { value: "∞",    label: "Daily streaks" },
 ];
