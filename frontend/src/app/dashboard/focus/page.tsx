@@ -29,7 +29,7 @@ import { Task, TaskStatus } from "@/types/tasks";
 
 type Mode = "focus" | "shortBreak" | "longBreak";
 
-const DURATIONS: Record<Mode, number> = {
+const DEFAULT_DURATIONS: Record<Mode, number> = {
   focus: 25 * 60,
   shortBreak: 5 * 60,
   longBreak: 15 * 60,
@@ -90,9 +90,11 @@ export default function FocusPage() {
   const { primaryAccent, isDark } = useTheme();
 
   const [mode, setMode] = useState<Mode>("focus");
-  const [secondsLeft, setSecondsLeft] = useState(DURATIONS.focus);
+  const [durations, setDurations] = useState<Record<Mode, number>>(DEFAULT_DURATIONS);
+  const [secondsLeft, setSecondsLeft] = useState(DEFAULT_DURATIONS.focus);
   const [running, setRunning] = useState(false);
   const [completedToday, setCompletedToday] = useState(0);
+  const [showCustom, setShowCustom] = useState(false);
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<number | "">("");
@@ -140,8 +142,8 @@ export default function FocusPage() {
 
   // When mode changes, reset the clock (only if not running).
   useEffect(() => {
-    if (!running) setSecondsLeft(DURATIONS[mode]);
-  }, [mode, running]);
+    if (!running) setSecondsLeft(durations[mode]);
+  }, [mode, running, durations]);
 
   // Tick.
   useEffect(() => {
@@ -183,17 +185,17 @@ export default function FocusPage() {
     const entry: SessionLog = {
       id: `${Date.now()}`,
       mode,
-      durationSec: DURATIONS[mode],
+      durationSec: durations[mode],
       completedAt: new Date().toISOString(),
       taskTitle: selectedTask?.title,
     };
     setLog((prev) => [entry, ...prev].slice(0, 50));
     if (mode === "focus") {
       setCompletedToday((c) => c + 1);
-      
+
       if (selectedTaskId !== "") {
         try {
-          await addFocusMinutes(Number(selectedTaskId), Math.round(DURATIONS.focus / 60));
+          await addFocusMinutes(Number(selectedTaskId), Math.round(durations.focus / 60));
           toast.success("Focus time logged to task!");
         } catch {
           toast.error("Failed to log focus time to server.");
@@ -240,7 +242,13 @@ export default function FocusPage() {
 
   const reset = () => {
     setRunning(false);
-    setSecondsLeft(DURATIONS[mode]);
+    setSecondsLeft(durations[mode]);
+  };
+
+  const setCustomMinutes = (m: Mode, minutes: number) => {
+    const secs = Math.max(1, Math.min(180, minutes)) * 60;
+    setDurations(prev => ({ ...prev, [m]: secs }));
+    if (m === mode && !running) setSecondsLeft(secs);
   };
 
   const skip = () => {
@@ -266,7 +274,7 @@ export default function FocusPage() {
     if (confirm("Clear your focus history?")) setLog([]);
   };
 
-  const total = DURATIONS[mode];
+  const total = durations[mode];
   const progress = ((total - secondsLeft) / total) * 100;
   const minutesToday = Math.round(
     log
@@ -325,6 +333,63 @@ export default function FocusPage() {
             <span className="hidden sm:inline">{MODE_LABEL[m]}</span>
           </button>
         ))}
+      </div>
+
+      {/* Custom durations */}
+      <div className="gf-card mb-5 overflow-hidden">
+        <button
+          onClick={() => setShowCustom(s => !s)}
+          className="w-full flex items-center justify-between px-5 py-3 text-sm font-semibold text-[var(--gf-text)] hover:bg-white/5 transition-colors"
+        >
+          <span className="flex items-center gap-2">
+            <TimerIcon size={14} style={{ color: primaryAccent }} />
+            Custom durations
+          </span>
+          <span className="gf-muted text-xs">
+            {showCustom ? "▲ Hide" : `Focus: ${Math.round(durations.focus / 60)}m · Short: ${Math.round(durations.shortBreak / 60)}m · Long: ${Math.round(durations.longBreak / 60)}m`}
+          </span>
+        </button>
+
+        {showCustom && (
+          <div className="border-t border-[var(--gf-border)] px-5 py-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {([
+              { key: "focus"      as Mode, label: "Focus",       icon: "🎯", max: 120 },
+              { key: "shortBreak" as Mode, label: "Short break",  icon: "☕", max: 30  },
+              { key: "longBreak"  as Mode, label: "Long break",   icon: "🌿", max: 60  },
+            ]).map(({ key, label, icon, max }) => (
+              <div key={key} className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold gf-muted flex items-center gap-1">
+                  {icon} {label}
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    max={max}
+                    disabled={running}
+                    value={Math.round(durations[key] / 60)}
+                    onChange={e => setCustomMinutes(key, Number(e.target.value))}
+                    className="gf-input w-20 text-center font-bold"
+                    style={{ color: key === mode ? primaryAccent : undefined }}
+                  />
+                  <span className="text-sm gf-muted">min</span>
+                  <input
+                    type="range"
+                    min={1}
+                    max={max}
+                    disabled={running}
+                    value={Math.round(durations[key] / 60)}
+                    onChange={e => setCustomMinutes(key, Number(e.target.value))}
+                    className="flex-1 accent-[var(--gf-accent)]"
+                  />
+                </div>
+              </div>
+            ))}
+            <p className="sm:col-span-3 text-xs gf-muted mt-1">
+              Changes apply immediately when the timer is stopped. Max: Focus 120 min · Short break 30 min · Long break 60 min.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Timer card */}
