@@ -23,6 +23,7 @@ import {
 import { JournalEntry } from "@/types/journal";
 import JournalPrompts from "@/app/components/journal-prompts";
 import { Lightbulb } from "lucide-react";
+import { generateJournalPrompt } from "@/app/actions/ai";
 
 // Words longer than this in the textarea are flagged as "you might be venting"
 // -- purely cosmetic; the analyzer still runs.
@@ -67,11 +68,28 @@ export default function JournalPage() {
   const [userId, setUserId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [promptsOpen, setPromptsOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiPromptLoading, setAiPromptLoading] = useState(false);
 
   useEffect(() => {
     const uid = getUserId();
     if (uid) setUserId(uid);
   }, []);
+
+  const handleGetAiPrompt = async () => {
+    setAiPromptLoading(true);
+    try {
+      // compute avg from history
+      const scores = history.map(e => normalizeScore(e.sentimentScore)).filter((s): s is number => s !== null);
+      const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length / 20 : undefined; // convert 0-100 → 1-5
+      const prompt = await generateJournalPrompt(avg);
+      setAiPrompt(prompt);
+    } catch {
+      setAiPrompt("What's on your mind that you haven't said out loud yet?");
+    } finally {
+      setAiPromptLoading(false);
+    }
+  };
 
   // Load history once we have a userId.
   useEffect(() => {
@@ -248,6 +266,36 @@ export default function JournalPage() {
               <> &middot; {STREAK_GOAL_WORDS - wordCount} to go</>
             )}
           </span>
+        </div>
+
+        {/* AI Prompt suggestion */}
+        <div className="mb-3 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleGetAiPrompt}
+            disabled={aiPromptLoading}
+            className="flex items-center gap-1.5 text-xs font-semibold rounded-lg px-3 py-1.5 transition-all"
+            style={{ background: "rgba(110,255,196,0.1)", color: "#6effc4", border: "1px solid rgba(110,255,196,0.2)" }}
+          >
+            {aiPromptLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+            {aiPromptLoading ? "Thinking…" : "AI Prompt"}
+          </button>
+          {aiPrompt && (
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <span className="text-sm italic gf-muted truncate">&ldquo;{aiPrompt}&rdquo;</span>
+              <button
+                type="button"
+                onClick={() => { setEntry(aiPrompt + "\n\n"); setAiPrompt(""); }}
+                className="text-[10px] font-semibold shrink-0 rounded px-2 py-1 transition-colors"
+                style={{ background: "rgba(110,255,196,0.15)", color: "#6effc4" }}
+              >
+                Use it
+              </button>
+              <button type="button" onClick={() => setAiPrompt("")} className="gf-muted hover:opacity-100 opacity-50 shrink-0">
+                <X size={12} />
+              </button>
+            </div>
+          )}
         </div>
 
         <textarea

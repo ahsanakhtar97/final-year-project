@@ -271,4 +271,155 @@ export class GeminiService {
       return 'AI summaries are currently unavailable.';
     }
   }
+
+  // -------------------- MOOD TEXT ANALYSIS --------------------
+
+  async analyzeMoodText(text: string): Promise<{ score: number; tags: string[]; reflection: string } | null> {
+    if (!this.client) return null;
+
+    const VALID_TAGS = [
+      'anxious','calm','content','energized','excited','focused',
+      'grateful','hopeful','irritable','overwhelmed','sad','tired',
+    ];
+
+    const prompt = [
+      'The user wrote a short description of how they are feeling today.',
+      'Analyse it and return a JSON object matching:',
+      '{',
+      '  "score": number,       // 1 (very low) to 5 (excellent) mood score',
+      '  "tags": string[],      // 0-4 emotion tags from this list only: ' + VALID_TAGS.join(', '),
+      '  "reflection": string   // 1 warm sentence acknowledging what they said. Max 120 chars.',
+      '}',
+      '',
+      'Output JSON only. No markdown.',
+      '',
+      `User description: "${text.slice(0, 500)}"`,
+    ].join('\n');
+
+    try {
+      const completion = await this.client.chat.completions.create({
+        model: this.modelName,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: prompt },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.5,
+        max_tokens: 200,
+      });
+
+      const raw = JSON.parse(completion.choices[0]?.message?.content ?? '{}') as {
+        score?: number; tags?: string[]; reflection?: string;
+      };
+
+      const score = typeof raw.score === 'number'
+        ? Math.max(1, Math.min(5, Math.round(raw.score))) : 3;
+      const tags = Array.isArray(raw.tags)
+        ? raw.tags.filter((t): t is string => VALID_TAGS.includes(t as string)).slice(0, 4)
+        : [];
+      const reflection = typeof raw.reflection === 'string' ? raw.reflection.trim() : '';
+
+      return { score, tags, reflection };
+    } catch (err) {
+      this.logger.warn(`Groq analyzeMoodText failed: ${(err as Error).message}`);
+      return null;
+    }
+  }
+
+  // -------------------- TASK PARSER --------------------
+
+  async parseTaskDescription(description: string): Promise<{
+    title: string; description: string; priority: string; dueDate: string | null;
+  } | null> {
+    if (!this.client) return null;
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    const prompt = [
+      `Today's date is ${today}.`,
+      'The user typed a natural-language task description. Parse it into structured fields.',
+      'Return a JSON object matching:',
+      '{',
+      '  "title": string,       // concise task title, max 60 chars',
+      '  "description": string, // any extra context from the input, or empty string',
+      '  "priority": "low" | "medium" | "high",',
+      '  "dueDate": string | null  // ISO date YYYY-MM-DD if a date/day is mentioned, else null',
+      '}',
+      '',
+      'Rules: infer priority from urgency words (urgent/critical/asap = high; eventually/someday = low). ',
+      'Infer dueDate from relative terms like "tomorrow", "Friday", "next week", "end of month". ',
+      'Output JSON only.',
+      '',
+      `Input: "${description.slice(0, 400)}"`,
+    ].join('\n');
+
+    try {
+      const completion = await this.client.chat.completions.create({
+        model: this.modelName,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: prompt },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.3,
+        max_tokens: 200,
+      });
+
+      const raw = JSON.parse(completion.choices[0]?.message?.content ?? '{}') as {
+        title?: string; description?: string; priority?: string; dueDate?: string | null;
+      };
+
+      return {
+        title: typeof raw.title === 'string' ? raw.title.slice(0, 60) : description.slice(0, 60),
+        description: typeof raw.description === 'string' ? raw.description : '',
+        priority: ['low','medium','high'].includes(raw.priority ?? '') ? raw.priority! : 'medium',
+        dueDate: typeof raw.dueDate === 'string' && raw.dueDate ? raw.dueDate : null,
+      };
+    } catch (err) {
+      this.logger.warn(`Groq parseTaskDescription failed: ${(err as Error).message}`);
+      return null;
+    }
+  }
+
+  // -------------------- JOURNAL PROMPT GENERATOR --------------------
+
+  async generateJournalPrompt(recentMoodAvg?: number, recentTags?: string[]): Promise<string | null> {
+    if (!this.client) return null;
+
+    const context = [
+      recentMoodAvg !== undefined && `Recent average mood (1-5 scale): ${recentMoodAvg.toFixed(1)}`,
+      recentTags?.length && `Recent emotion tags: ${recentTags.slice(0, 5).join(', ')}`,
+    ].filter(Boolean).join('\n');
+
+    const prompt = [
+      'Generate ONE thoughtful journal prompt for a wellness app user.',
+      context ? `User context:\n${context}` : 'No mood data available yet.',
+      '',
+      'The prompt should:',
+      '- Be a single open-ended question (not a command)',
+      '- Be specific to their emotional context if available',
+      '- Encourage reflection without being heavy-handed',
+      '- Be max 120 characters',
+      '',
+      'Output only the question. No quotes. No preamble.',
+    ].join('\n');
+
+    try {
+      const completion = await this.client.chat.completions.create({
+        model: this.modelName,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.9,
+        max_tokens: 80,
+      });
+
+      const text = (completion.choices[0]?.message?.content ?? '').trim().replace(/^["']|["']$/g, '');
+      return text.length > 0 ? text : null;
+    } catch (err) {
+      this.logger.warn(`Groq generateJournalPrompt failed: ${(err as Error).message}`);
+      return null;
+    }
+  }
 }

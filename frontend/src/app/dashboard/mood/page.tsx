@@ -11,13 +11,14 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import { Trash2, CheckCircle2 } from "lucide-react";
+import { Trash2, CheckCircle2, Sparkles, Loader2 } from "lucide-react";
 import {
   upsertMoodLog,
   getRecentMoodLogs,
   deleteMoodLog,
   type MoodLog,
 } from "@/app/actions/mood";
+import { analyzeMoodText } from "@/app/actions/ai";
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -67,6 +68,11 @@ export default function MoodPage() {
   const [note, setNote] = useState("");
   const [loggedToday, setLoggedToday] = useState(false);
 
+  // AI detect state
+  const [aiText, setAiText] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiReflection, setAiReflection] = useState("");
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -87,6 +93,23 @@ export default function MoodPage() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  async function handleAiDetect() {
+    if (!aiText.trim()) return;
+    setAiLoading(true);
+    try {
+      const result = await analyzeMoodText(aiText.trim());
+      setScore(result.score);
+      setTags(result.tags);
+      setAiReflection(result.reflection);
+      if (!note) setNote(aiText.trim());
+      toast.success("AI detected your mood!");
+    } catch {
+      toast.error("AI detection failed. Fill in manually.");
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   function toggleTag(tag: string) {
     setTags((prev) =>
@@ -188,6 +211,42 @@ export default function MoodPage() {
         <div className="flex items-center gap-2">
           <CheckCircle2 size={18} />
           <h2 className="gf-h2">{loggedToday ? "Update today's mood" : "How are you feeling today?"}</h2>
+        </div>
+
+        {/* AI detect box */}
+        <div className="rounded-xl border border-dashed p-4 space-y-3"
+          style={{ borderColor: "rgba(110,255,196,0.3)", background: "rgba(110,255,196,0.04)" }}>
+          <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: "#6effc4" }}>
+            <Sparkles size={15} />
+            Describe how you feel — AI fills everything in
+          </div>
+          <div className="flex gap-2">
+            <textarea
+              value={aiText}
+              onChange={e => setAiText(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleAiDetect(); } }}
+              rows={2}
+              placeholder='e.g. "I woke up anxious about the exam but felt better after a walk"'
+              className="gf-textarea flex-1 text-sm"
+              style={{ resize: "none" }}
+            />
+            <button
+              type="button"
+              onClick={handleAiDetect}
+              disabled={aiLoading || !aiText.trim()}
+              className="rounded-xl px-4 py-2 font-bold text-sm text-[#012016] flex items-center gap-2 self-stretch"
+              style={{ background: "linear-gradient(135deg,#6effc4,#1fbf75)", opacity: (!aiText.trim() || aiLoading) ? 0.5 : 1 }}
+            >
+              {aiLoading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
+              {aiLoading ? "Detecting…" : "Detect"}
+            </button>
+          </div>
+          {aiReflection && (
+            <p className="text-xs italic" style={{ color: "#9df2c8" }}>
+              💬 {aiReflection}
+            </p>
+          )}
+          <p className="text-[11px] gf-muted">AI fills in the score and emotion tags below. You can still adjust them.</p>
         </div>
 
         {/* Score picker */}

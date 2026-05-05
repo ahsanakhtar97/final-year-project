@@ -13,8 +13,9 @@ import {
   Plus, Trash2, Pencil, X, Search, SlidersHorizontal,
   CheckCircle2, Circle, Clock, Flame, TrendingUp, ListTodo,
   AlertTriangle, CalendarDays, GripVertical, ChevronDown,
-  ChevronUp, ArrowUpDown, Eye, EyeOff, Timer,
+  ChevronUp, ArrowUpDown, Eye, EyeOff, Timer, Sparkles, Loader2,
 } from "lucide-react";
+import { parseTaskDescription } from "@/app/actions/ai";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Columns { todo: Task[]; inProgress: Task[]; completed: Task[] }
@@ -210,6 +211,9 @@ export default function ToDoBoard() {
   const [sourceColumn, setSourceColumn] = useState<ColKey | "">("");
   const [dragOver, setDragOver] = useState<ColKey | "">("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [smartInput, setSmartInput] = useState("");
+  const [smartLoading, setSmartLoading] = useState(false);
+  const [smartPrefill, setSmartPrefill] = useState<{ title: string; description: string; priority: TaskPriority; dueDate: string } | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
@@ -313,6 +317,30 @@ export default function ToDoBoard() {
     catch { setError("Failed to move task."); setColumns(snap); }
   };
 
+  // ── Smart AI Add ───────────────────────────────────────────────────────────
+  const handleSmartAdd = async () => {
+    if (!smartInput.trim()) return;
+    setSmartLoading(true);
+    try {
+      const parsed = await parseTaskDescription(smartInput.trim());
+      setSmartPrefill({
+        title: parsed.title,
+        description: parsed.description,
+        priority: (parsed.priority as TaskPriority) || TaskPriority.MEDIUM,
+        dueDate: parsed.dueDate ?? "",
+      });
+      setSmartInput("");
+      setShowAddModal(true);
+    } catch {
+      // fallback: just open modal with the text as title
+      setSmartPrefill({ title: smartInput.trim(), description: "", priority: TaskPriority.MEDIUM, dueDate: "" });
+      setSmartInput("");
+      setShowAddModal(true);
+    } finally {
+      setSmartLoading(false);
+    }
+  };
+
   // ── Add ────────────────────────────────────────────────────────────────────
   const handleAdd = async (v: { title: string; description: string; priority: TaskPriority; dueDate: string }) => {
     const tempId = Date.now() * -1;
@@ -409,6 +437,29 @@ export default function ToDoBoard() {
             <Plus size={15} /> Add Task
           </button>
         </div>
+      </div>
+
+      {/* ── AI Smart Add ── */}
+      <div className="gf-card p-4 flex gap-2 items-center"
+        style={{ borderLeft: "3px solid #6effc4", background: isDark ? "rgba(110,255,196,0.04)" : "rgba(22,59,37,0.03)" }}>
+        <Sparkles size={16} style={{ color: "#6effc4", flexShrink: 0 }} />
+        <input
+          value={smartInput}
+          onChange={e => setSmartInput(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") handleSmartAdd(); }}
+          placeholder='Describe a task in plain English… e.g. "Finish report by Friday, urgent"'
+          className="flex-1 bg-transparent outline-none text-sm"
+          style={{ color: isDark ? "#e7f7ee" : "#163b25" }}
+        />
+        <button
+          onClick={handleSmartAdd}
+          disabled={smartLoading || !smartInput.trim()}
+          className="gf-btn gf-btn-primary !py-1.5 !px-3 text-xs"
+          style={{ opacity: (!smartInput.trim() || smartLoading) ? 0.5 : 1 }}
+        >
+          {smartLoading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+          {smartLoading ? "Parsing…" : "AI Add"}
+        </button>
       </div>
 
       {/* ── Stats ── */}
@@ -693,11 +744,12 @@ export default function ToDoBoard() {
 
       {/* ── Add Modal ── */}
       {showAddModal && (
-        <Modal onClose={() => setShowAddModal(false)}>
+        <Modal onClose={() => { setShowAddModal(false); setSmartPrefill(null); }}>
           <TaskForm
             isDark={isDark}
-            onSubmit={handleAdd}
-            onClose={() => setShowAddModal(false)}
+            initial={smartPrefill ? { ...smartPrefill, taskId: 0, userId: 0, taskStatus: TaskStatus.TO_DO, completedAt: null, focusMinutes: 0 } as Task : undefined}
+            onSubmit={v => { handleAdd(v); setSmartPrefill(null); }}
+            onClose={() => { setShowAddModal(false); setSmartPrefill(null); }}
             submitLabel="Create task"
           />
         </Modal>

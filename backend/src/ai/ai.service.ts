@@ -244,6 +244,33 @@ export class AiService {
     return out;
   }
 
+  /** Detect mood score + emotion tags from a free-text description. */
+  async analyzeMoodText(text: string): Promise<{ score: number; tags: string[]; reflection: string }> {
+    if (this.gemini.isReady) {
+      const result = await this.gemini.analyzeMoodText(text);
+      if (result) return result;
+    }
+    return { score: 3, tags: [], reflection: "Saved — AI analysis unavailable right now." };
+  }
+
+  /** Parse a natural-language task description into structured fields. */
+  async parseTaskDescription(description: string): Promise<{ title: string; description: string; priority: string; dueDate: string | null }> {
+    if (this.gemini.isReady) {
+      const result = await this.gemini.parseTaskDescription(description);
+      if (result) return result;
+    }
+    return { title: description.slice(0, 60), description, priority: 'medium', dueDate: null };
+  }
+
+  /** Generate a personalised journal prompt based on recent mood. */
+  async generateJournalPrompt(recentMoodAvg?: number, recentTags?: string[]): Promise<{ prompt: string }> {
+    if (this.gemini.isReady) {
+      const result = await this.gemini.generateJournalPrompt(recentMoodAvg, recentTags);
+      if (result) return { prompt: result };
+    }
+    return { prompt: "What's one thing that felt heavy today, and one thing that felt light?" };
+  }
+
   /** General purpose text generation (e.g. weekly reports) */
   async generateText(prompt: string): Promise<string> {
     if (this.gemini.isReady) {
