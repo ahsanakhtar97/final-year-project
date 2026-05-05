@@ -1,24 +1,16 @@
 "use client";
 
 import DailyCheckIn from "@/app/components/daily-check-in";
-
 import api from "@/lib/axios";
 import React, { useEffect, useMemo, useState } from "react";
 import CorrelationChart from "../components/charts/CorrelationChart";
+import Link from "next/link";
 import {
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart as RCPieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart as RCPieChart, Pie, Cell, BarChart, Bar,
 } from "recharts";
 import { fetchDailyCompleted, getBestWorstHabit, getHabitsByUserId, getUserStreaks } from "../actions/user-habits";
-import { toast } from 'react-toastify';
+import { toast } from "react-toastify";
 import { getUserId } from "@/lib/utils";
 import { getTasksByUserId, getUser } from "../actions/getUsers";
 import { Task } from "@/types/tasks";
@@ -27,9 +19,12 @@ import { HabitStat, HabitStreak } from "@/types/habits";
 import { getJournalEntriesByUser } from "../actions/journal";
 import { JournalEntry } from "@/types/journal";
 import { useTheme } from "@/app/dashboard/theme-context";
-
-
-const MOOD_KEY = "growflow_moods_v1";
+import { getMyAppointments, type Appointment } from "@/app/actions/appointments";
+import { getTodayMoodLog, type MoodLog } from "@/app/actions/mood";
+import {
+  Smile, BookOpen, Timer, Calendar, Stethoscope,
+  TrendingUp, CheckSquare, Video, ChevronRight, Flame,
+} from "lucide-react";
 
 const DATE_KEY = (d = new Date()) => d.toISOString().slice(0, 10);
 
@@ -39,14 +34,19 @@ interface UserHabit {
   [key: string]: unknown;
 }
 
+function greeting(name?: string) {
+  const h = new Date().getHours();
+  const salutation = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  return name ? `${salutation}, ${name.split(" ")[0]} 👋` : `${salutation} 👋`;
+}
+
+const SCORE_EMOJI = ["", "😞", "😕", "😐", "🙂", "😄"];
+
 export default function DashboardPage() {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const [isRevealed, setIsRevealed] = useState(false);
-  const [bestWorstState, setBestWorstState] = useState<{ best: HabitStat | null; worst: HabitStat | null }>({
-    best: null,
-    worst: null,
-  });
+  const [bestWorstState, setBestWorstState] = useState<{ best: HabitStat | null; worst: HabitStat | null }>({ best: null, worst: null });
   const [habits, setHabits] = useState<UserHabit[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [user, setUser] = useState<User | null>(null);
@@ -56,6 +56,8 @@ export default function DashboardPage() {
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
   const [aiRecommendation, setAiRecommendation] = useState<string>("Loading your wellness tip...");
   const [currentMood, setCurrentMood] = useState<number | null>(null);
+  const [upcomingAppts, setUpcomingAppts] = useState<Appointment[]>([]);
+  const [todayMood, setTodayMood] = useState<MoodLog | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -63,26 +65,16 @@ export default function DashboardPage() {
       if (userId) {
         const h = await getHabitsByUserId(userId);
         setHabits(h as unknown as UserHabit[]);
-
         const u = await getUser(userId);
         setUser(u);
-
-        // Moods stored locally for the emoji selector legacy flow.
-        try {
-          localStorage.getItem(MOOD_KEY);
-        } catch {}
-
         const t = await getTasksByUserId(userId);
         if (t) setTasks(t);
-
         try {
           const entries = await getJournalEntriesByUser(userId);
           setJournalEntries(entries);
-        } catch {
-          // non-fatal: chart falls back to a flat line.
-        }
+        } catch { /* non-fatal */ }
       } else {
-        toast.error('Token not found');
+        toast.error("Token not found");
       }
     }
     fetchData();
@@ -91,17 +83,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const userId = getUserId();
-    const days = 30;
     async function fetchBestWorst() {
       try {
         if (userId) {
-          const bw = await getBestWorstHabit(userId, days);
+          const bw = await getBestWorstHabit(userId, 30);
           setBestWorstState(bw);
         }
-      } catch {
-        toast.error("Failed to fetch best/worst habit");
-        setBestWorstState({ best: null, worst: null });
-      }
+      } catch { setBestWorstState({ best: null, worst: null }); }
     }
     if (userId) fetchBestWorst();
   }, []);
@@ -109,13 +97,11 @@ export default function DashboardPage() {
   useEffect(() => {
     async function fetchAiSuggestion() {
       try {
-        const response = await api.get('/dashboard/summary');
+        const response = await api.get("/dashboard/summary");
         const { recommendation, mood } = response.data;
-
         setAiRecommendation(recommendation);
         setCurrentMood(mood);
-      } catch (err) {
-        console.error("AI Fetch Error:", err);
+      } catch {
         setAiRecommendation("Stay focused and keep growing!");
       }
     }
@@ -125,31 +111,54 @@ export default function DashboardPage() {
   useEffect(() => {
     async function fetchStreaks() {
       const userId = getUserId();
-      if (!userId) return toast.error("Token not found");
-
+      if (!userId) return;
       try {
         const streaks = await getUserStreaks(userId);
         setHabitStreaks(streaks);
-      } catch {
-        toast.error("Failed to fetch habit streaks");
-      }
+      } catch { /* non-fatal */ }
     }
     fetchStreaks();
   }, []);
 
   useEffect(() => {
-    async function fetchData() {
+    async function fetchDailyData() {
       try {
         const userId = getUserId();
-        const days = 30;
-        if (!userId) return toast.error("Token not found");
-        const data = await fetchDailyCompleted(userId, days);
+        if (!userId) return;
+        const data = await fetchDailyCompleted(userId, 30);
         setDailyCompleted(data);
-      } catch {
-        toast.error("Failed to fetch daily completed habits");
-      }
+      } catch { /* non-fatal */ }
     }
-    fetchData();
+    fetchDailyData();
+  }, []);
+
+  // Fetch upcoming confirmed appointments
+  useEffect(() => {
+    async function fetchAppts() {
+      try {
+        const all = await getMyAppointments();
+        const now = new Date();
+        const in48h = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+        const upcoming = all.filter((a) => {
+          if (a.status !== "confirmed") return false;
+          const t = new Date(a.proposedAt);
+          return t >= now && t <= in48h;
+        });
+        setUpcomingAppts(upcoming);
+      } catch { /* non-fatal */ }
+    }
+    fetchAppts();
+  }, []);
+
+  // Fetch today's mood
+  useEffect(() => {
+    async function fetchMood() {
+      try {
+        const m = await getTodayMoodLog();
+        setTodayMood(m);
+      } catch { /* non-fatal */ }
+    }
+    fetchMood();
   }, []);
 
   const today = DATE_KEY();
@@ -161,48 +170,42 @@ export default function DashboardPage() {
   const totalCompleted = completedHabitsToday + completedTasksTotal;
   const productivityScore = totalItems ? Math.round((totalCompleted / totalItems) * 100) : 0;
 
-  // Focus estimate: 25 min per task done today + 10 min per habit completion.
   const tasksCompletedToday = tasks.filter((t) => {
     if (!t.completedAt || t.taskStatus !== "completed") return false;
     return DATE_KEY(new Date(t.completedAt)) === today;
   }).length;
-  const focusMinutesToday =
-    tasksCompletedToday * 25 + completedHabitsToday * 10;
+  const focusMinutesToday = tasksCompletedToday * 25 + completedHabitsToday * 10;
 
-  const dailyLast7 = dailyCompleted.slice(-7).map(d => ({
+  const dailyLast7 = dailyCompleted.slice(-7).map((d) => ({
     day: d.date.slice(5),
     completed: d.completed,
   }));
-  const chartLabels = dailyLast7.map(d => d.day);
-  const habitValues = dailyLast7.map(d => d.completed);
+  const chartLabels = dailyLast7.map((d) => d.day);
+  const habitValues = dailyLast7.map((d) => d.completed);
 
-  // Per-day mood from journal entries: average sentiment per day, normalized 0-10.
   const moodByDay = useMemo(() => {
     const buckets: Record<string, number[]> = {};
     for (const e of journalEntries) {
       const key = new Date(e.createdAt).toISOString().slice(5, 10);
       if (e.sentimentScore === null || e.sentimentScore === undefined) continue;
       const raw = e.sentimentScore;
-      const norm =
-        raw >= -1 && raw <= 1 ? ((raw + 1) / 2) * 10 : (raw / 100) * 10;
+      const norm = raw >= -1 && raw <= 1 ? ((raw + 1) / 2) * 10 : (raw / 100) * 10;
       (buckets[key] ??= []).push(norm);
     }
     return buckets;
   }, [journalEntries]);
+
   const moodValues = dailyLast7.map((d) => {
     const samples = moodByDay[d.day];
-    if (samples?.length) {
-      return Math.round(samples.reduce((s, n) => s + n, 0) / samples.length);
-    }
+    if (samples?.length) return Math.round(samples.reduce((s, n) => s + n, 0) / samples.length);
     return currentMood ?? 0;
   });
 
-  const taskCounts = useMemo(() => {
-    const todo = tasks.filter((t) => t.taskStatus === "to_do").length;
-    const inProg = tasks.filter((t) => t.taskStatus === "in_progress").length;
-    const done = tasks.filter((t) => t.taskStatus === "completed").length;
-    return { todo, inProg, done };
-  }, [tasks]);
+  const taskCounts = useMemo(() => ({
+    todo: tasks.filter((t) => t.taskStatus === "to_do").length,
+    inProg: tasks.filter((t) => t.taskStatus === "in_progress").length,
+    done: tasks.filter((t) => t.taskStatus === "completed").length,
+  }), [tasks]);
 
   const taskPieData = [
     { name: "To Do", value: taskCounts.todo },
@@ -212,62 +215,42 @@ export default function DashboardPage() {
 
   const taskVelocityData = useMemo(() => {
     const now = new Date();
-    const weeks = [];
-    for (let w = 3; w >= 0; w--) {
-      const start = new Date(now);
-      start.setDate(now.getDate() - (w + 1) * 7 + 1);
-      const end = new Date(now);
-      end.setDate(now.getDate() - w * 7);
-      const startKey = DATE_KEY(start);
-      const endKey = DATE_KEY(end);
+    return Array.from({ length: 4 }, (_, i) => {
+      const w = 3 - i;
+      const start = new Date(now); start.setDate(now.getDate() - (w + 1) * 7 + 1);
+      const end = new Date(now); end.setDate(now.getDate() - w * 7);
+      const startKey = DATE_KEY(start), endKey = DATE_KEY(end);
       const count = tasks.filter((t) => {
         if (!t.completedAt) return false;
-        const d = new Date(t.completedAt);
-        const k = DATE_KEY(d);
+        const k = DATE_KEY(new Date(t.completedAt));
         return k >= startKey && k <= endKey;
       }).length;
-      weeks.push({ week: `${startKey.slice(5)}→${endKey.slice(5)}`, completed: count });
-    }
-    return weeks;
+      return { week: `W${4 - w}`, completed: count };
+    });
   }, [tasks]);
 
   const weeklySummary = useMemo(() => {
     const last7Keys = dailyLast7.map((d) => d.day);
-    const habitsCompletedUnique = habits.filter((h) => last7Keys.some((k) => h.records?.[k])).length;
-    const tasksCompletedWeek = tasks.filter((t) => {
-      if (!t.completedAt) return false;
-      const k = DATE_KEY(new Date(t.completedAt));
-      return dailyLast7.some(d => d.day === k.slice(5));
-    }).length;
-    return { habitsCompletedUnique, tasksCompletedWeek };
-  }, [habits, tasks, dailyLast7]);
-
-  const palette = {
-    lightBg: "linear-gradient(180deg,#dff8e3,#bfe7c5)",
-    lightCard: "#ffffff",
-    lightAccent: "#163b25",
-    darkBg: "linear-gradient(180deg,#06130f,#0f2a21)",
-    darkCard: "#0f241f",
-    darkAccent: "#8fe8b2",
-  };
+    return {
+      habitsCompletedUnique: habits.filter((h) => last7Keys.some((k) => h.records?.[k])).length,
+      tasksCompletedWeek: tasks.filter((t) => {
+        if (!t.completedAt) return false;
+        const k = DATE_KEY(new Date(t.completedAt));
+        return dailyLast7.some((d) => d.day === k.slice(5));
+      }).length,
+      journalCount: journalEntries.filter((e) => {
+        const k = new Date(e.createdAt).toISOString().slice(5, 10);
+        return dailyLast7.some((d) => d.day === k);
+      }).length,
+    };
+  }, [habits, tasks, dailyLast7, journalEntries]);
 
   const greenAccent = isDark ? "#aef0c9" : "#163b25";
-
-  const productivityCircleStyle: React.CSSProperties = {
-    margin: "12px auto",
-    width: 128,
-    height: 128,
-    borderRadius: "50%",
-    border: `10px solid ${greenAccent}`,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 28,
-    fontWeight: 700,
-    color: isDark ? palette.darkAccent : palette.lightAccent,
-    background: isDark ? "rgba(20,70,50,0.06)" : palette.lightCard,
-    boxShadow: isDark ? `0 0 30px rgba(174,240,201,0.06)` : `0 6px 20px rgba(22,59,34,0.08)`,
-    transition: "box-shadow 300ms ease, transform 200ms ease",
+  const palette = {
+    darkAccent: "#8fe8b2",
+    lightAccent: "#163b25",
+    darkCard: "#0f241f",
+    lightCard: "#ffffff",
   };
 
   const wrapperStyle: React.CSSProperties = {
@@ -275,284 +258,268 @@ export default function DashboardPage() {
     transform: mounted ? "translateY(0) scale(1)" : "translateY(6px) scale(0.995)",
   };
 
+  const QUICK_ACTIONS = [
+    { href: "/dashboard/mood", icon: Smile, label: "Log Mood", color: "rgba(110,255,196,0.15)" },
+    { href: "/dashboard/journal", icon: BookOpen, label: "Journal", color: "rgba(160,180,255,0.15)" },
+    { href: "/dashboard/focus", icon: Timer, label: "Focus", color: "rgba(255,200,80,0.15)" },
+    { href: "/dashboard/appointments", icon: Calendar, label: "Appointments", color: "rgba(92,242,255,0.15)" },
+    { href: "/dashboard/care", icon: Stethoscope, label: "Find a Doctor", color: "rgba(255,160,180,0.15)" },
+    { href: "/dashboard/games", icon: TrendingUp, label: "Mind Games", color: "rgba(180,130,255,0.15)" },
+  ];
+
   return (
     <div className="gf-fade-up mx-auto max-w-7xl" style={wrapperStyle}>
+
+      {/* ── Greeting ── */}
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="gf-h1" style={{ fontFamily: "'Lora', serif", color: isDark ? palette.darkAccent : palette.lightAccent }}>
-            Dashboard
+            {greeting(user?.name)}
           </h1>
           <div className="gf-muted text-sm">
-            Overview — {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
+            {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
           </div>
         </div>
         <span className="gf-chip">
-          <span className="h-2 w-2 rounded-full bg-current" />
-          Live
+          <span className="h-2 w-2 rounded-full bg-current animate-pulse" /> Live
         </span>
       </div>
 
+      {/* ── XP bar ── */}
       {user && (
-        <div className="mb-6 flex items-center gap-4 gf-card p-4 gf-fade-up">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full text-white font-bold text-xl shadow-lg" style={{ background: isDark ? '#1fbf75' : '#27ae60' }}>
+        <div className="mb-6 flex items-center gap-4 gf-card p-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full text-white font-bold text-xl shadow-lg"
+            style={{ background: isDark ? "#1fbf75" : "#27ae60" }}>
             {user.level}
           </div>
           <div className="flex-1">
             <div className="flex justify-between items-end mb-1">
-              <span className="text-sm font-bold uppercase tracking-wider" style={{ color: greenAccent }}>Level {user.level}</span>
+              <span className="text-sm font-bold uppercase tracking-wider" style={{ color: greenAccent }}>
+                Level {user.level}
+              </span>
               <span className="text-xs gf-muted">{user.xp} / {user.level * 100} XP</span>
             </div>
-            <div className="h-3 w-full rounded-full overflow-hidden" style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }}>
-              <div className="h-full transition-all duration-1000" style={{ width: `${Math.min(100, (user.xp / (user.level * 100)) * 100)}%`, background: isDark ? '#8fe8b2' : '#2ecc71' }}></div>
+            <div className="h-3 w-full rounded-full overflow-hidden"
+              style={{ background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)" }}>
+              <div className="h-full transition-all duration-1000"
+                style={{ width: `${Math.min(100, (user.xp / (user.level * 100)) * 100)}%`, background: isDark ? "#8fe8b2" : "#2ecc71" }} />
             </div>
           </div>
         </div>
       )}
 
-      <div className="mb-6">
-        <DailyCheckIn />
+      {/* ── Upcoming appointment banner ── */}
+      {upcomingAppts.length > 0 && (
+        <div className="mb-6 space-y-2">
+          {upcomingAppts.map((a) => {
+            const when = new Date(a.proposedAt);
+            const diffH = Math.round((when.getTime() - Date.now()) / 3_600_000);
+            return (
+              <div key={a.appointmentId}
+                className="gf-card p-4 flex items-center gap-4 flex-wrap"
+                style={{ borderLeft: "3px solid #6effc4", background: "rgba(110,255,196,0.08)" }}>
+                <Video size={18} style={{ color: "#6effc4" }} className="shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-sm">
+                    Upcoming session with {a.professional?.name ?? "your doctor"}
+                  </div>
+                  <div className="text-xs gf-muted">
+                    {when.toLocaleString()} · in {diffH < 1 ? "less than an hour" : `${diffH}h`}
+                  </div>
+                </div>
+                <Link href={`/dashboard/appointments/${a.appointmentId}/call`}
+                  className="gf-btn gf-btn-primary shrink-0">
+                  <Video size={13} /> Join Call
+                </Link>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Today at a glance strip ── */}
+      <div className="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: "Habits today", value: `${completedHabitsToday}/${habits.length}`, icon: Flame, color: "#6effc4" },
+          { label: "Tasks done", value: completedTasksTotal, icon: CheckSquare, color: "#5cf2ff" },
+          { label: "Focus time", value: `${focusMinutesToday}m`, icon: Timer, color: "#fbbf24" },
+          { label: "Productivity", value: `${productivityScore}%`, icon: TrendingUp, color: "#b3c6ff" },
+        ].map(({ label, value, icon: Icon, color }) => (
+          <div key={label} className="gf-card p-4 flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: `${color}22` }}>
+              <Icon size={16} style={{ color }} />
+            </div>
+            <div>
+              <div className="font-bold text-lg leading-none">{value}</div>
+              <div className="text-xs gf-muted mt-0.5">{label}</div>
+            </div>
+          </div>
+        ))}
       </div>
 
-      <div
-        className="gf-card gf-fade-up mb-6 flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:gap-5"
-        style={{
-          background: isDark
-            ? "linear-gradient(135deg,#0f241f 0%, #06130f 100%)"
-            : "linear-gradient(135deg,#ffffff 0%, #f0fff4 100%)",
-          border: `2px solid ${isDark ? "#8fe8b2" : "#163b25"}`,
-        }}
-      >
-        <div className="text-4xl shrink-0">💡</div>
-        <div className="min-w-0 flex-1">
-          <div
-            className="text-xs font-bold uppercase tracking-wider"
-            style={{ color: greenAccent }}
-          >
-            GrowFlow AI Recommendation
+      {/* ── Quick actions ── */}
+      <div className="mb-6">
+        <h2 className="gf-h2 mb-3">Quick actions</h2>
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+          {QUICK_ACTIONS.map(({ href, icon: Icon, label, color }) => (
+            <Link key={href} href={href}
+              className="gf-card gf-card-hover p-3 flex flex-col items-center gap-2 text-center"
+              style={{ background: color }}>
+              <Icon size={20} />
+              <span className="text-xs font-medium leading-tight">{label}</span>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Mood + AI tip row ── */}
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {/* Today's mood */}
+        <Link href="/dashboard/mood" className="gf-card gf-card-hover p-5 block">
+          <div className="text-sm font-bold mb-3" style={{ color: greenAccent }}>
+            Today&apos;s mood
           </div>
-          <p
-            className="mt-1 text-base sm:text-lg font-medium leading-relaxed transition-all duration-500"
+          {todayMood ? (
+            <div className="flex items-center gap-4">
+              <div className="text-5xl">{SCORE_EMOJI[todayMood.score]}</div>
+              <div>
+                <div className="font-semibold capitalize">
+                  {["", "Very low", "Low", "Okay", "Good", "Excellent"][todayMood.score]}
+                </div>
+                {(todayMood.emotionTags ?? []).length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {(todayMood.emotionTags ?? []).slice(0, 3).map((t) => (
+                      <span key={t} className="gf-chip text-[11px] capitalize">{t}</span>
+                    ))}
+                  </div>
+                )}
+                {todayMood.note && (
+                  <p className="text-xs gf-muted mt-1 line-clamp-2">{todayMood.note}</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="text-4xl opacity-40">😐</div>
+              <div>
+                <div className="text-sm font-medium">Not logged yet</div>
+                <div className="text-xs gf-muted mt-0.5">Tap to log how you&apos;re feeling</div>
+              </div>
+              <ChevronRight size={16} className="ml-auto opacity-50" />
+            </div>
+          )}
+        </Link>
+
+        {/* AI tip */}
+        <div className="gf-card p-5 flex flex-col gap-3"
+          style={{
+            background: isDark
+              ? "linear-gradient(135deg,#0f241f,#06130f)"
+              : "linear-gradient(135deg,#ffffff,#f0fff4)",
+            border: `2px solid ${isDark ? "#8fe8b2" : "#163b25"}`,
+          }}>
+          <div className="flex items-center gap-2">
+            <div className="text-xl">💡</div>
+            <div className="text-xs font-bold uppercase tracking-wider" style={{ color: greenAccent }}>
+              AI Wellness Tip
+            </div>
+          </div>
+          <p className="text-sm leading-relaxed flex-1 transition-all duration-500"
             style={{
               color: isDark ? "#e6ffef" : "#123716",
-              filter: isRevealed ? "none" : "blur(6px)",
+              filter: isRevealed ? "none" : "blur(5px)",
               userSelect: isRevealed ? "auto" : "none",
-            }}
-          >
+            }}>
             {aiRecommendation}
           </p>
           {!isRevealed && (
-            <button
-              onClick={() => setIsRevealed(true)}
-              className="gf-btn gf-btn-primary mt-3 !py-1.5 !px-3 text-xs"
-            >
-              Reveal daily tip
+            <button onClick={() => setIsRevealed(true)} className="gf-btn gf-btn-primary !py-1.5 !px-3 text-xs self-start">
+              Reveal tip
             </button>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="gf-card gf-card-hover gf-fade-up p-5">
-          <div className="text-sm font-bold" style={{ color: isDark ? "#cfeed8" : "#2f6b45" }}>
-            Productivity
-          </div>
-          <div className="gf-muted mt-1 text-xs">Combined habits + tasks</div>
-          <div className="mt-4 flex justify-center">
-            <div style={productivityCircleStyle}>
-              <div className="text-center leading-none">
-                <div className="text-2xl sm:text-3xl font-bold">{productivityScore}%</div>
-                <div className="mt-1 text-xs opacity-80">
-                  {totalItems ? `${totalCompleted}/${totalItems}` : "0/0"}
-                </div>
+      <div className="mb-6">
+        <DailyCheckIn />
+      </div>
+
+      {/* ── Weekly summary strip ── */}
+      <div className="mb-6 gf-card p-5">
+        <h2 className="gf-h2 mb-4">This week at a glance</h2>
+        <div className="grid grid-cols-3 gap-4 text-center">
+          {[
+            { label: "Habits", value: weeklySummary.habitsCompletedUnique, sub: "active this week" },
+            { label: "Tasks", value: weeklySummary.tasksCompletedWeek, sub: "completed" },
+            { label: "Journal", value: weeklySummary.journalCount, sub: "entries written" },
+          ].map(({ label, value, sub }) => (
+            <div key={label}>
+              <div className="text-2xl font-bold" style={{ color: isDark ? palette.darkAccent : palette.lightAccent }}>
+                {value}
               </div>
+              <div className="text-xs font-semibold mt-0.5">{label}</div>
+              <div className="text-xs gf-muted">{sub}</div>
             </div>
-          </div>
-        </div>
-
-        <div className="gf-card gf-card-hover gf-fade-up p-5">
-          <div className="text-sm font-bold" style={{ color: isDark ? "#cfeed8" : "#2f6b45" }}>
-            How are you feeling?
-          </div>
-          <div className="mt-5 flex justify-between px-1">
-            {["\u{1F622}", "\u{1F610}", "\u{1F642}", "\u{1F60A}", "\u{1F929}"].map((emoji, index) => {
-              return (
-                <button
-                  key={index}
-                  onClick={() => {
-                    toast.success("Mood recorded!", { icon: () => <span>{emoji}</span> });
-                  }}
-                  aria-label={`Set mood ${index + 1} of 5`}
-                  className="text-2xl sm:text-3xl transition-transform hover:scale-125 focus:outline-none focus:scale-125"
-                >
-                  {emoji}
-                </button>
-              );
-            })}
-          </div>
-          <div
-            className="mt-4 text-center text-xs"
-            style={{ color: isDark ? "#9fdab0" : "#3e6f4a" }}
-          >
-            Tap an emoji to update your wellness profile.
-          </div>
-        </div>
-
-        <div className="gf-card gf-card-hover gf-fade-up p-5 sm:col-span-2 lg:col-span-1">
-          <div className="text-sm font-bold" style={{ color: isDark ? "#cfeed8" : "#2f6b45" }}>
-            Focus
-          </div>
-          <div
-            className="mt-3 text-center text-4xl sm:text-5xl font-bold"
-            style={{ color: isDark ? palette.darkAccent : palette.lightAccent }}
-          >
-            {focusMinutesToday}m
-          </div>
-          <div
-            className="mt-2 text-center text-xs"
-            style={{ color: isDark ? "#9fdab0" : "#3e6f4a" }}
-          >
-            Estimated focus today
-            <br />
-            <span className="opacity-70">
-              {tasksCompletedToday} task{tasksCompletedToday === 1 ? "" : "s"}
-              {" · "}
-              {completedHabitsToday} habit{completedHabitsToday === 1 ? "" : "s"}
-            </span>
-          </div>
+          ))}
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="gf-card gf-fade-up p-5 lg:col-span-2 min-h-[420px] flex flex-col">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <div className="text-base font-bold" style={{ color: greenAccent }}>
-              Mood &amp; Productivity
-            </div>
+      {/* ── Charts row ── */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 mb-6">
+        <div className="gf-card p-5 lg:col-span-2 min-h-[380px] flex flex-col">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="text-base font-bold" style={{ color: greenAccent }}>Mood &amp; Productivity</div>
             <span className="gf-muted text-xs">Last 7 days</span>
           </div>
-          <div className="flex-1 min-h-[320px]">
-            <CorrelationChart
-              labels={chartLabels}
-              habitData={habitValues}
-              moodData={moodValues}
-            />
+          <div className="flex-1 min-h-[280px]">
+            <CorrelationChart labels={chartLabels} habitData={habitValues} moodData={moodValues} />
           </div>
         </div>
 
         <div className="flex flex-col gap-4">
-          <div className="gf-card gf-card-hover gf-fade-up p-5">
-            <div className="text-sm font-bold" style={{ color: greenAccent }}>
-              Weekly summary
-            </div>
-            <div className="mt-3 flex items-center justify-between">
-              <div>
-                <div className="gf-muted text-xs">Habits touched</div>
-                <div
-                  className="text-xl font-bold"
-                  style={{ color: isDark ? palette.darkAccent : palette.lightAccent }}
-                >
-                  {weeklySummary.habitsCompletedUnique}
-                </div>
+          <div className="gf-card gf-card-hover p-5">
+            <div className="text-sm font-bold mb-3" style={{ color: greenAccent }}>Best / worst habit (30d)</div>
+            <div className="space-y-1.5 text-sm">
+              <div className="gf-muted">
+                🏆 Best: <span className="ml-1 font-bold" style={{ color: isDark ? palette.darkAccent : palette.lightAccent }}>
+                  {bestWorstState.best ? `${bestWorstState.best.habitName} (${Math.round(bestWorstState.best.percentage * 100)}%)` : "—"}
+                </span>
               </div>
-              <div className="text-right">
-                <div className="gf-muted text-xs">Tasks done</div>
-                <div
-                  className="text-xl font-bold"
-                  style={{ color: isDark ? palette.darkAccent : palette.lightAccent }}
-                >
-                  {weeklySummary.tasksCompletedWeek}
-                </div>
+              <div className="gf-muted">
+                📉 Worst: <span className="ml-1 font-bold" style={{ color: isDark ? palette.darkAccent : palette.lightAccent }}>
+                  {bestWorstState.worst ? `${bestWorstState.worst.habitName} (${Math.round(bestWorstState.worst.percentage * 100)}%)` : "—"}
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="gf-card gf-card-hover gf-fade-up p-5">
-            <div className="text-sm font-bold" style={{ color: greenAccent }}>
-              Lifestyle balance
-            </div>
-            <div className="h-[180px] w-full">
+          <div className="gf-card gf-card-hover p-5">
+            <div className="text-sm font-bold mb-2" style={{ color: greenAccent }}>Lifestyle balance</div>
+            <div className="h-[160px]">
               <ResponsiveContainer width="100%" height="100%">
                 <RCPieChart>
-                  <Pie
-                    data={[
-                      { name: "Health", value: 40 },
-                      { name: "Work", value: 30 },
-                      { name: "Mindfulness", value: 30 },
-                    ]}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={45}
-                    outerRadius={70}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    <Cell fill="#1fbf75" />
-                    <Cell fill="#60d394" />
-                    <Cell fill="#9b59b6" />
+                  <Pie data={[{ name: "Health", value: 40 }, { name: "Work", value: 30 }, { name: "Mindfulness", value: 30 }]}
+                    cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={5} dataKey="value">
+                    <Cell fill="#1fbf75" /><Cell fill="#60d394" /><Cell fill="#9b59b6" />
                   </Pie>
                   <Tooltip />
                 </RCPieChart>
               </ResponsiveContainer>
             </div>
           </div>
-
-          <div className="gf-card gf-card-hover gf-fade-up p-5">
-            <div className="text-sm font-bold" style={{ color: greenAccent }}>
-              Best / worst habit (30d)
-            </div>
-            <div className="mt-2 space-y-1.5">
-              <div className="text-sm gf-muted">
-                Best:{" "}
-                <span
-                  className="ml-1 font-bold"
-                  style={{ color: isDark ? palette.darkAccent : palette.lightAccent }}
-                >
-                  {bestWorstState.best
-                    ? `${bestWorstState.best.habitName} (${Math.round(
-                        bestWorstState.best.percentage * 100
-                      )}%)`
-                    : "—"}
-                </span>
-              </div>
-              <div className="text-sm gf-muted">
-                Worst:{" "}
-                <span
-                  className="ml-1 font-bold"
-                  style={{ color: isDark ? palette.darkAccent : palette.lightAccent }}
-                >
-                  {bestWorstState.worst
-                    ? `${bestWorstState.worst.habitName} (${Math.round(
-                        bestWorstState.worst.percentage * 100
-                      )}%)`
-                    : "—"}
-                </span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="gf-card gf-fade-up p-5">
-          <div className="mb-3 text-sm font-bold" style={{ color: greenAccent }}>
-            Task status
-          </div>
-          <div className="h-[240px]">
+      {/* ── Task charts ── */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="gf-card p-5">
+          <div className="mb-3 text-sm font-bold" style={{ color: greenAccent }}>Task status</div>
+          <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <RCPieChart>
-                <Pie
-                  data={taskPieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={80}
-                  paddingAngle={4}
-                  dataKey="value"
-                  label
-                >
-                  <Cell fill="#fbbf24" />
-                  <Cell fill="#3498db" />
-                  <Cell fill="#1fbf75" />
+                <Pie data={taskPieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="value" label>
+                  <Cell fill="#fbbf24" /><Cell fill="#3498db" /><Cell fill="#1fbf75" />
                 </Pie>
                 <Tooltip />
               </RCPieChart>
@@ -560,11 +527,9 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="gf-card gf-fade-up p-5">
-          <div className="mb-3 text-sm font-bold" style={{ color: greenAccent }}>
-            Task velocity (4 weeks)
-          </div>
-          <div className="h-[240px]">
+        <div className="gf-card p-5">
+          <div className="mb-3 text-sm font-bold" style={{ color: greenAccent }}>Task velocity (4 weeks)</div>
+          <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={taskVelocityData}>
                 <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#1f4d33" : "#d2e8d9"} />
