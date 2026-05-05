@@ -28,6 +28,7 @@ import {
   Users,
   LifeBuoy,
   Smile,
+  Gamepad2,
 } from "lucide-react";
 import { useTheme } from "@/app/dashboard/theme-context";
 
@@ -49,6 +50,7 @@ const PATIENT_NAV: NavItem[] = [
   { href: "/dashboard/focus", label: "Focus Timer", icon: Timer },
   { href: "/dashboard/sleep", label: "Sleep", icon: Moon },
   { href: "/dashboard/mood", label: "Mood", icon: Smile },
+  { href: "/dashboard/games", label: "Mind Games", icon: Gamepad2 },
   { href: "/dashboard/calendar", label: "Calendar", icon: Calendar },
   { href: "/dashboard/coach", label: "Coach", icon: Sparkles },
   { href: "/dashboard/insights", label: "Insights", icon: TrendingUp },
