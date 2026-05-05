@@ -1,30 +1,32 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 
 /**
- * Thin wrapper around the Google Gemini SDK that powers GrowFlow's three
- * AI surfaces:
+ * Thin wrapper around the Groq API that powers GrowFlow's three AI surfaces:
  *
  *   1. AI Coach chat replies (structured JSON)
  *   2. Dashboard recommendation / quote (single string)
  *   3. Growth Journal sentiment analysis (structured JSON)
  *
+ * The class is intentionally named GeminiService to keep the rest of the
+ * codebase unchanged. Internally it now calls Groq (llama-3.3-70b-versatile
+ * by default) which has a generous free tier and very fast inference.
+ *
  * Design rules:
- *   - The service is initialized lazily and degrades gracefully when no
- *     GEMINI_API_KEY is configured. Callers are expected to wrap calls in
- *     try/catch and use a deterministic fallback.
- *   - All structured outputs go through `responseMimeType: 'application/json'`
- *     and a strict JSON schema so we don't have to regex parse the reply.
- *   - System prompts are tuned for GrowFlow's wellness tone: warm, calm,
- *     specific, no toxic positivity, and gentle when the user's mood is low.
+ *   - Degrades gracefully when GROQ_API_KEY is missing — callers always get
+ *     a usable fallback from AiService.
+ *   - All structured outputs request JSON via response_format so we never
+ *     need to regex-parse the reply.
+ *   - System prompt is tuned for GrowFlow's wellness tone: warm, calm,
+ *     specific, no toxic positivity.
  */
 
 export interface CoachContextSnapshot {
   openTasks?: number;
   tasksCompleted7d?: number;
-  recentMoodAvg?: number; // 1..10 scale
-  bestStreak?: number; // days
+  recentMoodAvg?: number;
+  bestStreak?: number;
   focusMinutesToday?: number;
   habitsDoneToday?: number;
   habitsTotalToday?: number;
@@ -42,46 +44,44 @@ export interface JournalSentiment {
   score: number; // 0..100
 }
 
+const SYSTEM_PROMPT =
+  "You are GrowFlow's gentle AI companion. You help the user build " +
+  'small, sustainable wellness habits. Be warm, specific, and brief. ' +
+  'Avoid toxic positivity. Never invent metrics. When the user seems ' +
+  'low, lower the bar — do not push harder. Use plain language; no ' +
+  'emojis unless the user uses them first.';
+
 @Injectable()
 export class GeminiService {
   private readonly logger = new Logger(GeminiService.name);
-  private readonly model?: GenerativeModel;
+  private readonly client?: Groq;
   private readonly modelName: string;
 
   constructor(private readonly config: ConfigService) {
-    const apiKey = this.config.get<string>('GEMINI_API_KEY');
-    this.modelName = this.config.get<string>('GEMINI_MODEL') ?? 'gemini-1.5-flash';
+    const apiKey = this.config.get<string>('GROQ_API_KEY');
+    this.modelName =
+      this.config.get<string>('GROQ_MODEL') ?? 'llama-3.3-70b-versatile';
 
     if (!apiKey) {
       this.logger.warn(
-        'GEMINI_API_KEY not set -- Gemini features will fall back to canned responses. ' +
-          'Add GEMINI_API_KEY to backend/.env to enable real AI replies.',
+        'GROQ_API_KEY not set — AI features will fall back to canned responses. ' +
+          'Add GROQ_API_KEY to backend/.env to enable real AI replies.',
       );
       return;
     }
 
     try {
-      const client = new GoogleGenerativeAI(apiKey);
-      this.model = client.getGenerativeModel({
-        model: this.modelName,
-        systemInstruction:
-          "You are GrowFlow's gentle AI companion. You help the user build " +
-          'small, sustainable wellness habits. Be warm, specific, and brief. ' +
-          'Avoid toxic positivity. Never invent metrics. When the user seems ' +
-          'low, lower the bar -- do not push harder. Use plain language; no ' +
-          'emojis unless the user uses them first.',
-      });
-      this.logger.log(`Gemini model ready: ${this.modelName}`);
+      this.client = new Groq({ apiKey });
+      this.logger.log(`Groq model ready: ${this.modelName}`);
     } catch (err) {
       this.logger.error(
-        `Failed to initialise Gemini -- using fallbacks. ${(err as Error).message}`,
+        `Failed to initialise Groq — using fallbacks. ${(err as Error).message}`,
       );
     }
   }
 
-  /** True when Gemini is actually wired up. Callers can short-circuit if not. */
   get isReady(): boolean {
-    return !!this.model;
+    return !!this.client;
   }
 
   // -------------------- AI COACH --------------------
@@ -90,20 +90,23 @@ export class GeminiService {
     userMessage: string,
     context: CoachContextSnapshot,
   ): Promise<CoachReply | null> {
-    if (!this.model) return null;
+    if (!this.client) return null;
 
     const prompt = this.buildCoachPrompt(userMessage, context);
 
     try {
-      const result = await this.model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          temperature: 0.85,
-          maxOutputTokens: 800,
-        },
+      const completion = await this.client.chat.completions.create({
+        model: this.modelName,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: prompt },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.85,
+        max_tokens: 800,
       });
-      const text = result.response.text();
+
+      const text = completion.choices[0]?.message?.content ?? '';
       const parsed = JSON.parse(text) as Partial<CoachReply>;
 
       const tone = (['encourage', 'celebrate', 'reset'] as const).includes(
@@ -122,9 +125,7 @@ export class GeminiService {
         tone,
       };
     } catch (err) {
-      this.logger.warn(
-        `Gemini coach call failed: ${(err as Error).message}`,
-      );
+      this.logger.warn(`Groq coach call failed: ${(err as Error).message}`);
       return null;
     }
   }
@@ -143,14 +144,14 @@ export class GeminiService {
       .join('\n  - ');
 
     return [
-      `User said: "${userMsg.slice(0, 500) || '(no message -- give a check-in)'}"`,
+      `User said: "${userMsg.slice(0, 500) || '(no message — give a check-in)'}"`,
       '',
       'Context snapshot:',
       `  - ${facts || '(no metrics yet)'}`,
       '',
       'Reply as a JSON object matching exactly this TypeScript type:',
       '{',
-      '  "reply": string;             // 1-3 sentences, max ~280 characters total. Specific to the data above.',
+      '  "reply": string;             // 1-3 sentences, max ~280 characters. Specific to the data above.',
       '  "suggestions": string[];     // 2 or 3 short concrete next steps. Each <= 10 words.',
       '  "tone": "encourage" | "celebrate" | "reset"; // pick "reset" if mood < 4 or user sounds overwhelmed; "celebrate" if streak >= 7 OR completed >= 10; otherwise "encourage".',
       '}',
@@ -166,7 +167,7 @@ export class GeminiService {
     moodScore: number,
     openTasksCount: number,
   ): Promise<string | null> {
-    if (!this.model) return null;
+    if (!this.client) return null;
 
     const prompt = [
       `Current mood (1-10): ${moodScore}`,
@@ -179,16 +180,22 @@ export class GeminiService {
     ].join('\n');
 
     try {
-      const result = await this.model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.9, maxOutputTokens: 80 },
+      const completion = await this.client.chat.completions.create({
+        model: this.modelName,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.9,
+        max_tokens: 80,
       });
-      const text = result.response.text().trim().replace(/^["']|["']$/g, '');
+
+      const text = (completion.choices[0]?.message?.content ?? '')
+        .trim()
+        .replace(/^["']|["']$/g, '');
       return text.length > 0 ? text : null;
     } catch (err) {
-      this.logger.warn(
-        `Gemini recommendation call failed: ${(err as Error).message}`,
-      );
+      this.logger.warn(`Groq recommendation call failed: ${(err as Error).message}`);
       return null;
     }
   }
@@ -196,7 +203,7 @@ export class GeminiService {
   // -------------------- JOURNAL SENTIMENT --------------------
 
   async analyzeJournalEntry(text: string): Promise<JournalSentiment | null> {
-    if (!this.model) return null;
+    if (!this.client) return null;
 
     const prompt = [
       'You are reflecting back on a personal journal entry the user wrote.',
@@ -204,45 +211,41 @@ export class GeminiService {
       '{',
       '  "english": string;  // 1-2 warm sentences reflecting what you noticed. Specific, not generic. STRICT max 200 characters.',
       '  "urdu": string;     // The same reflection in natural Urdu. STRICT max 200 characters.',
-      '  "score": number;    // 0..100 sentiment score; 0 very negative, 50 neutral, 100 very positive. Be honest, not flattering.',
+      '  "score": number;    // 0..100 sentiment score; 0 very negative, 50 neutral, 100 very positive. Be honest.',
       '}',
       '',
-      'Length rules are HARD limits -- if you go over, the JSON will be truncated and the user sees nothing. ' +
-        'Keep both strings short. Output JSON only -- no markdown, no preamble.',
-      '',
-      'Tone rules: empathic, calm, never preachy, never toxic positivity. ' +
-        'If the entry is short or neutral, your reflection should be short too.',
+      'Keep both strings short. Output JSON only — no markdown, no preamble.',
+      'Tone: empathic, calm, never preachy, never toxic positivity.',
       '',
       `Entry:\n"""\n${text.slice(0, 4000)}\n"""`,
     ].join('\n');
 
     try {
-      const result = await this.model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          temperature: 0.6,
-          // Generous budget: Urdu uses ~2-3x more tokens per character than
-          // English, so 200-char strings in both languages need real headroom
-          // before JSON gets truncated mid-string and parse fails.
-          maxOutputTokens: 1200,
-        },
+      const completion = await this.client.chat.completions.create({
+        model: this.modelName,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: prompt },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.6,
+        max_tokens: 400,
       });
-      const raw = result.response.text();
+
+      const raw = completion.choices[0]?.message?.content ?? '';
       const parsed = JSON.parse(raw) as Partial<JournalSentiment>;
       const score =
         typeof parsed.score === 'number' && Number.isFinite(parsed.score)
           ? Math.max(0, Math.min(100, Math.round(parsed.score)))
           : 50;
+
       return {
         english: typeof parsed.english === 'string' ? parsed.english.trim() : '',
         urdu: typeof parsed.urdu === 'string' ? parsed.urdu.trim() : '',
         score,
       };
     } catch (err) {
-      this.logger.warn(
-        `Gemini journal call failed: ${(err as Error).message}`,
-      );
+      this.logger.warn(`Groq journal call failed: ${(err as Error).message}`);
       return null;
     }
   }
@@ -250,16 +253,21 @@ export class GeminiService {
   // -------------------- GENERAL TEXT GENERATION --------------------
 
   async generateText(prompt: string): Promise<string> {
-    if (!this.model) return 'AI summaries are currently unavailable.';
+    if (!this.client) return 'AI summaries are currently unavailable.';
 
     try {
-      const result = await this.model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 500 },
+      const completion = await this.client.chat.completions.create({
+        model: this.modelName,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.7,
+        max_tokens: 500,
       });
-      return result.response.text().trim();
+      return (completion.choices[0]?.message?.content ?? '').trim();
     } catch (err) {
-      this.logger.warn(`Gemini generateText failed: ${(err as Error).message}`);
+      this.logger.warn(`Groq generateText failed: ${(err as Error).message}`);
       return 'AI summaries are currently unavailable.';
     }
   }

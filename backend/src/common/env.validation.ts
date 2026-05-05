@@ -84,8 +84,7 @@ class EnvironmentVariables {
   @IsString()
   AI_SERVICE_URL?: string;
 
-  // Google Gemini API key. Optional -- if absent, AiService falls back to its
-  // built-in canned/deterministic responses, so the app still runs without it.
+  // Google Gemini API key (legacy, kept for reference).
   @IsOptional()
   @IsString()
   GEMINI_API_KEY?: string;
@@ -93,6 +92,15 @@ class EnvironmentVariables {
   @IsOptional()
   @IsString()
   GEMINI_MODEL?: string;
+
+  // Groq API key. Optional -- if absent, AiService falls back to canned responses.
+  @IsOptional()
+  @IsString()
+  GROQ_API_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  GROQ_MODEL?: string;
 
   // Shared secret used to authenticate the admin endpoints (provider
   // verification, audit). Set this to a long random string in .env.
