@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 
 import { GamificationService } from '../gamification/gamification.service';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
 import { Task } from './entities/task.entity';
 import { TaskStatus } from './enums/task-status.enum';
 
@@ -23,7 +24,10 @@ export class TasksService {
 
   async create(createTaskDto: CreateTaskDto): Promise<Task> {
     try {
-      const entity = this.tasksRepository.create(createTaskDto);
+      const entity = this.tasksRepository.create({
+        ...createTaskDto,
+        dueDate: createTaskDto.dueDate ? new Date(createTaskDto.dueDate) : null,
+      });
       return await this.tasksRepository.save(entity);
     } catch (err) {
       this.logger.error('Failed to create task', err as Error);
@@ -59,15 +63,27 @@ export class TasksService {
     task.taskStatus = newStatus;
     if (newStatus === TaskStatus.COMPLETED) {
       task.completedAt = new Date();
+    } else {
+      task.completedAt = null;
     }
     const savedTask = await this.tasksRepository.save(task);
 
-    // Award XP if task is completed
     if (oldStatus !== TaskStatus.COMPLETED && newStatus === TaskStatus.COMPLETED) {
-      await this.gamificationService.awardXp(savedTask.userId, 10); // 10 XP per task
+      await this.gamificationService.awardXp(savedTask.userId, 10);
     }
 
     return savedTask;
+  }
+
+  async updateTask(taskId: number, dto: UpdateTaskDto): Promise<Task> {
+    const task = await this.findOne(taskId);
+    if (dto.title !== undefined) task.title = dto.title;
+    if (dto.description !== undefined) task.description = dto.description;
+    if (dto.priority !== undefined) task.priority = dto.priority;
+    if (dto.dueDate !== undefined) {
+      task.dueDate = dto.dueDate ? new Date(dto.dueDate) : null;
+    }
+    return this.tasksRepository.save(task);
   }
 
   async addFocusMinutes(taskId: number, minutes: number): Promise<Task> {

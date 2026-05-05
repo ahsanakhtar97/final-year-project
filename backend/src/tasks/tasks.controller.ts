@@ -11,13 +11,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
 import { Task } from './entities/task.entity';
 import { TaskStatus } from './enums/task-status.enum';
 import { TasksService } from './tasks.service';
@@ -68,6 +65,15 @@ export class TasksController {
     @Param('newStatus', new ParseEnumPipe(TaskStatus)) newStatus: TaskStatus,
   ): Promise<Task> {
     return this.tasksService.updateStatus(taskId, newStatus);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update task title, description, priority, or due date.' })
+  updateTask(
+    @Param('id', ParseIntPipe) taskId: number,
+    @Body() dto: UpdateTaskDto,
+  ): Promise<Task> {
+    return this.tasksService.updateTask(taskId, dto);
   }
 
   @Patch(':id/focus')
