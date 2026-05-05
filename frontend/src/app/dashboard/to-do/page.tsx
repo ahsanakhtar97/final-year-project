@@ -485,7 +485,7 @@ export default function ToDoBoard() {
               const color = p === "all" ? "#6effc4" : PRIORITY_META[p as TaskPriority].color;
               return (
                 <button
-                  key={p} onClick={() => setFilterPriority(p)}
+                  key={p} onClick={() => setFilterPriority(p as TaskPriority | "all")}
                   className="px-3 py-1 rounded-full text-xs font-semibold capitalize transition-all"
                   style={{
                     background: active ? `${color}20` : "transparent",
