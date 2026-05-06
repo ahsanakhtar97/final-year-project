@@ -57,3 +57,30 @@ export async function generateJournalPrompt(
   });
   return res.data.prompt;
 }
+
+export interface CorrelationDayData {
+  date: string;
+  habitsCompleted: number;
+  moodScore: number | null;
+  sleepHours: number | null;
+  tasksCompleted: number;
+}
+
+export interface CorrelationInsight {
+  title: string;
+  insight: string;
+  type: "positive" | "neutral" | "warning";
+}
+
+export async function getCorrelationInsights(payload: {
+  days: CorrelationDayData[];
+  totalHabitLogs: number;
+  totalJournalEntries: number;
+}): Promise<CorrelationInsight[]> {
+  try {
+    const res = await api.post<CorrelationInsight[]>("/ai/correlations", payload);
+    return res.data;
+  } catch {
+    return [];
+  }
+}

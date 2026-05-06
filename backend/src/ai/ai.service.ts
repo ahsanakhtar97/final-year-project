@@ -278,4 +278,64 @@ export class AiService {
     }
     return 'Your weekly summary will appear here when the AI service is ready.';
   }
+
+  /**
+   * AI correlation insights: analyse the user's 30-day activity log and return
+   * 3-5 data-driven insight cards about habits, mood, sleep, and task patterns.
+   */
+  async getCorrelationInsights(data: {
+    days: { date: string; habitsCompleted: number; moodScore: number | null; sleepHours: number | null; tasksCompleted: number }[];
+    totalHabitLogs: number;
+    totalJournalEntries: number;
+  }): Promise<{ title: string; insight: string; type: 'positive' | 'neutral' | 'warning' }[]> {
+    if (this.gemini.isReady) {
+      const result = await this.gemini.generateCorrelationInsights(data);
+      if (result && result.length > 0) return result;
+    }
+
+    // Deterministic fallback
+    const days = data.days.filter(d => d.habitsCompleted > 0 || d.moodScore !== null);
+    if (days.length < 3) {
+      return [{
+        title: 'Not enough data yet',
+        insight: 'Complete habits and journal entries for a few days and your personalised insights will appear here.',
+        type: 'neutral',
+      }];
+    }
+
+    const withMood = days.filter(d => d.moodScore !== null);
+    const withHabits = days.filter(d => d.habitsCompleted > 0);
+    const avgMoodHabits = withHabits.length
+      ? withHabits.reduce((s, d) => s + (d.moodScore ?? 0), 0) / withHabits.length
+      : null;
+    const noHabitDays = days.filter(d => d.habitsCompleted === 0 && d.moodScore !== null);
+    const avgMoodNoHabits = noHabitDays.length
+      ? noHabitDays.reduce((s, d) => s + (d.moodScore ?? 0), 0) / noHabitDays.length
+      : null;
+
+    const insights: { title: string; insight: string; type: 'positive' | 'neutral' | 'warning' }[] = [];
+
+    if (avgMoodHabits !== null && avgMoodNoHabits !== null) {
+      const diff = avgMoodHabits - avgMoodNoHabits;
+      if (diff > 1) {
+        insights.push({ title: 'Habits lift your mood', insight: `Your mood averages ${avgMoodHabits.toFixed(1)}/10 on habit days vs ${avgMoodNoHabits.toFixed(1)}/10 on days you skip — a ${diff.toFixed(1)}-point difference.`, type: 'positive' });
+      } else if (diff > 0) {
+        insights.push({ title: 'Slight mood-habit link', insight: `You score ${diff.toFixed(1)} points higher on days you complete habits. Keep logging to confirm the trend.`, type: 'neutral' });
+      }
+    }
+
+    const activeDaysPct = Math.round((withHabits.length / Math.max(days.length, 1)) * 100);
+    insights.push({
+      title: activeDaysPct >= 70 ? 'Strong consistency' : 'Room to grow',
+      insight: `You completed at least one habit on ${activeDaysPct}% of the last ${days.length} tracked days.`,
+      type: activeDaysPct >= 70 ? 'positive' : activeDaysPct >= 40 ? 'neutral' : 'warning',
+    });
+
+    if (withMood.length > 0) {
+      const avgMood = withMood.reduce((s, d) => s + (d.moodScore ?? 0), 0) / withMood.length;
+      insights.push({ title: 'Average mood', insight: `Your average mood over the last ${withMood.length} logged days is ${avgMood.toFixed(1)}/10.`, type: avgMood >= 7 ? 'positive' : avgMood >= 4 ? 'neutral' : 'warning' });
+    }
+
+    return insights;
+  }
 }

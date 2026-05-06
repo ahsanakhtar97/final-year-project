@@ -23,10 +23,9 @@ import {
   BarChart,
   Bar,
   ComposedChart,
-  Scatter,
   Legend,
 } from "recharts";
-import { TrendingUp, Flame, BookOpen, CheckCircle2 } from "lucide-react";
+import { TrendingUp, Flame, BookOpen, CheckCircle2, Brain, Sparkles, AlertTriangle, Minus } from "lucide-react";
 import { useTheme } from "@/app/dashboard/theme-context";
 import { getUserId } from "@/lib/utils";
 import { getJournalEntriesByUser } from "@/app/actions/journal";
@@ -38,6 +37,10 @@ import {
 } from "@/app/actions/user-habits";
 import { getTasks } from "@/app/actions/tasks";
 import { TaskStatus } from "@/types/tasks";
+import {
+  getCorrelationInsights,
+  CorrelationInsight,
+} from "@/app/actions/ai";
 import { HabitStreak, Habit } from "@/types/habits";
 
 interface MoodPoint {
@@ -75,6 +78,8 @@ export default function InsightsPage() {
   const [tasksTotal, setTasksTotal] = useState(0);
   const [tasksCompleted, setTasksCompleted] = useState(0);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsCorrelation[]>([]);
+  const [aiInsights, setAiInsights] = useState<CorrelationInsight[]>([]);
+  const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -136,6 +141,30 @@ export default function InsightsPage() {
           allTasks.filter((t) => t.taskStatus === TaskStatus.COMPLETED).length,
         );
         setAnalyticsData(analytics.correlations);
+
+        // Fire AI correlation insights separately so they don't block the
+        // main charts from rendering. We pass the analytics rows directly as
+        // the day-level payload; sleep is not yet tracked so we send null.
+        if (analytics.correlations.length > 0) {
+          setAiLoading(true);
+          const allJournal = journal ?? [];
+          getCorrelationInsights({
+            days: analytics.correlations.map((d) => ({
+              date: d.date,
+              habitsCompleted: d.habitsCompleted,
+              moodScore: d.moodScore,
+              sleepHours: null,
+              tasksCompleted: 0,
+            })),
+            totalHabitLogs: analytics.correlations.reduce(
+              (s, d) => s + d.habitsCompleted,
+              0,
+            ),
+            totalJournalEntries: allJournal.length,
+          })
+            .then(setAiInsights)
+            .finally(() => setAiLoading(false));
+        }
       } finally {
         setLoading(false);
       }
@@ -164,20 +193,6 @@ export default function InsightsPage() {
   const gridColor = isDark ? "rgba(174,240,201,0.10)" : "rgba(22,59,37,0.10)";
   const axisColor = isDark ? "#9ed8bb" : "#5d7a66";
 
-  const scatterData = analyticsData.filter(d => d.moodScore !== null);
-  let correlationText = "Not enough data yet.";
-  if (scatterData.length >= 3) {
-    const avgMoodWhenHabitsDone = scatterData.filter(d => d.habitsCompleted > 0).reduce((sum, d) => sum + (d.moodScore || 0), 0) / scatterData.filter(d => d.habitsCompleted > 0).length || 0;
-    const avgMoodWhenNoHabits = scatterData.filter(d => d.habitsCompleted === 0).reduce((sum, d) => sum + (d.moodScore || 0), 0) / scatterData.filter(d => d.habitsCompleted === 0).length || 0;
-    
-    if (avgMoodWhenHabitsDone > avgMoodWhenNoHabits + 1) {
-      correlationText = "Your mood tends to be significantly better on days you complete your habits!";
-    } else if (avgMoodWhenHabitsDone > avgMoodWhenNoHabits) {
-      correlationText = "Completing habits seems to have a slight positive impact on your mood.";
-    } else {
-      correlationText = "Your mood seems independent of your habit completion right now.";
-    }
-  }
 
   return (
     <div className="mx-auto max-w-6xl gf-fade-up">
@@ -369,51 +384,143 @@ export default function InsightsPage() {
           </ul>
         )}
       </div>
-      {/* Advanced Analytics */}
-      <div className="space-y-6 mt-8 mb-8">
-        <h2 className="gf-h2" style={{ color: primaryAccent }}>Advanced Correlations</h2>
-        
-        <div className="gf-card p-6" style={{ background: isDark ? 'linear-gradient(135deg,#0f241f 0%, #06130f 100%)' : 'linear-gradient(135deg,#ffffff 0%, #f0fff4 100%)', border: `2px solid ${primaryAccent}` }}>
-          <h3 className="text-lg font-bold mb-2" style={{ color: primaryAccent }}>AI Insight</h3>
-          <p className="text-sm md:text-base font-medium">{correlationText}</p>
+      {/* AI Correlation Insights */}
+      <div className="mt-8 mb-8">
+        <div className="flex items-center gap-2 mb-4">
+          <Brain size={18} style={{ color: primaryAccent }} />
+          <h2 className="gf-h2" style={{ color: primaryAccent }}>
+            AI Correlation Insights
+          </h2>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="gf-card p-5">
-            <h3 className="font-bold text-sm mb-4" style={{ color: primaryAccent }}>Habits vs Mood Timeline</h3>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
+        {aiLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="gf-skeleton h-28 w-full rounded-xl" />
+            ))}
+          </div>
+        ) : aiInsights.length === 0 && !loading ? (
+          <div className="gf-card p-6 text-center">
+            <Brain size={28} className="mx-auto mb-3 opacity-40" />
+            <p className="gf-muted text-sm">
+              Complete a few habits and journal entries — your personalised AI
+              insights will appear here once there's enough data.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {aiInsights.map((ins, i) => (
+              <InsightCard key={i} insight={ins} accent={primaryAccent} isDark={isDark} />
+            ))}
+          </div>
+        )}
+
+        {/* Habits vs Mood combo chart */}
+        {analyticsData.length > 0 && (
+          <div className="gf-card p-5 mt-6">
+            <h3 className="font-semibold text-sm mb-4" style={{ color: primaryAccent }}>
+              Habits completed vs mood — last 30 days
+            </h3>
+            <div style={{ width: "100%", height: 260 }}>
+              <ResponsiveContainer>
                 <ComposedChart data={analyticsData}>
                   <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-                  <XAxis dataKey="date" tickFormatter={(str) => str.slice(5)} stroke={axisColor} fontSize={11} />
-                  <YAxis yAxisId="left" stroke={axisColor} fontSize={11} />
-                  <YAxis yAxisId="right" orientation="right" domain={[0, 10]} stroke="#3498db" fontSize={11} />
-                  <Tooltip contentStyle={{ background: isDark ? "#0f2a21" : "#ffffff", border: `1px solid ${gridColor}`, borderRadius: 8, fontSize: 12 }} />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar yAxisId="left" dataKey="habitsCompleted" name="Habits Completed" fill={primaryAccent} radius={[4, 4, 0, 0]} />
-                  <Line yAxisId="right" type="monotone" dataKey="moodScore" name="Mood Score (0-10)" stroke="#3498db" strokeWidth={3} dot={{ r: 4 }} connectNulls />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(str: string) => str.slice(5)}
+                    stroke={axisColor}
+                    fontSize={11}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis yAxisId="left" stroke={axisColor} fontSize={11} width={24} />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    domain={[0, 10]}
+                    stroke={axisColor}
+                    fontSize={11}
+                    width={24}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: isDark ? "var(--gf-surface)" : "#ffffff",
+                      border: `1px solid ${gridColor}`,
+                      borderRadius: 8,
+                      fontSize: 12,
+                    }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar
+                    yAxisId="left"
+                    dataKey="habitsCompleted"
+                    name="Habits"
+                    fill={primaryAccent}
+                    fillOpacity={0.75}
+                    radius={[4, 4, 0, 0]}
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="moodScore"
+                    name="Mood (0–10)"
+                    stroke="var(--gf-accent-2, #60a5fa)"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    connectNulls
+                  />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
           </div>
-
-          <div className="gf-card p-5">
-            <h3 className="font-bold text-sm mb-4" style={{ color: primaryAccent }}>Mood Correlation</h3>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={scatterData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-                  <XAxis type="number" dataKey="habitsCompleted" name="Habits Completed" domain={['dataMin', 'dataMax']} stroke={axisColor} fontSize={11} />
-                  <YAxis type="number" dataKey="moodScore" name="Mood Score" domain={[0, 10]} stroke={axisColor} fontSize={11} />
-                  <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ background: isDark ? "#0f2a21" : "#ffffff", border: `1px solid ${gridColor}`, borderRadius: 8, fontSize: 12 }} />
-                  <Scatter name="Days" data={scatterData} fill="#8884d8" />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-            <p className="text-xs text-center mt-2 opacity-70">Scatter plot showing if higher habits completed correlates with higher mood.</p>
-          </div>
-        </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+function InsightCard({
+  insight,
+  accent,
+  isDark,
+}: {
+  insight: CorrelationInsight;
+  accent: string;
+  isDark: boolean;
+}) {
+  const iconMap = {
+    positive: <Sparkles size={15} />,
+    warning: <AlertTriangle size={15} />,
+    neutral: <Minus size={15} />,
+  };
+  const colorMap = {
+    positive: accent,
+    warning: "#f59e0b",
+    neutral: isDark ? "#9ca3af" : "#6b7280",
+  };
+  const bgMap = {
+    positive: `rgba(var(--gf-accent-rgb), 0.08)`,
+    warning: "rgba(245,158,11,0.10)",
+    neutral: isDark ? "rgba(156,163,175,0.07)" : "rgba(107,114,128,0.06)",
+  };
+
+  return (
+    <div
+      className="rounded-xl p-4 flex flex-col gap-2 border"
+      style={{
+        background: bgMap[insight.type],
+        borderColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)",
+      }}
+    >
+      <div
+        className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider"
+        style={{ color: colorMap[insight.type] }}
+      >
+        {iconMap[insight.type]}
+        {insight.title}
+      </div>
+      <p className="text-sm leading-snug" style={{ color: isDark ? "#d1fae5" : "#1a2e22" }}>
+        {insight.insight}
+      </p>
     </div>
   );
 }

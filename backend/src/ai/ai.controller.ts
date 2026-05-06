@@ -3,6 +3,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { CoachRequestDto } from './dto/coach-request.dto';
+import { CorrelationsRequestDto } from './dto/correlations-request.dto';
 import { AiService } from './ai.service';
 
 @ApiTags('ai')
@@ -42,5 +43,13 @@ export class AiController {
     @Body() body: { recentMoodAvg?: number; recentTags?: string[] },
   ): Promise<{ prompt: string }> {
     return this.aiService.generateJournalPrompt(body.recentMoodAvg, body.recentTags);
+  }
+
+  @Post('correlations')
+  @ApiOperation({ summary: 'Generate AI-powered correlation insights from the past 30 days of activity.' })
+  correlations(
+    @Body() dto: CorrelationsRequestDto,
+  ): Promise<{ title: string; insight: string; type: 'positive' | 'neutral' | 'warning' }[]> {
+    return this.aiService.getCorrelationInsights(dto);
   }
 }

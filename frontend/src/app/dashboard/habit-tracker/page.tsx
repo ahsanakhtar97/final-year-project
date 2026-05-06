@@ -9,7 +9,7 @@ import {
   getHabitsByUserId,
   revokeHabit,
 } from "@/app/actions/user-habits";
-import { completeHabit } from "@/app/actions/habit-logs";
+import { completeHabit, getHabitLogsByUserId } from "@/app/actions/habit-logs";
 import { createHabit, getHabits } from "@/app/actions/habits";
 import { createCategory, getCategories } from "@/app/actions/categories";
 import { Category } from "@/types/categories";
@@ -25,6 +25,7 @@ import {
   Wand2,
   FolderPlus,
 } from "lucide-react";
+import HabitHeatmap from "@/app/components/habit-heatmap";
 
 type ModalTab = "browse" | "custom";
 
@@ -45,6 +46,9 @@ export default function HabitsPage() {
     useState<(Habit & { completed?: boolean }) | null>(null);
   const [moodScore, setMoodScore] = useState(5);
 
+  // Habit logs for the heatmap
+  const [habitLogs, setHabitLogs] = useState<{ date: string; status: string }[]>([]);
+
   // Custom habit creation form
   const [newHabitName, setNewHabitName] = useState("");
   const [newHabitCategoryId, setNewHabitCategoryId] = useState<string>("");
@@ -63,15 +67,17 @@ export default function HabitsPage() {
         if (!uid) return;
         setUserId(uid);
 
-        const [allHabits, uh, allCategories] = await Promise.all([
+        const [allHabits, uh, allCategories, logs] = await Promise.all([
           getHabits(),
           getHabitsByUserId(uid),
           getCategories(),
+          getHabitLogsByUserId(uid),
         ]);
 
         setHabits(allHabits);
         setUserHabits(uh);
         setCategories(allCategories);
+        setHabitLogs(logs);
       } catch (err) {
         console.error(err);
         toast.error("Failed to load data.");
@@ -362,6 +368,19 @@ export default function HabitsPage() {
             );
           })}
         </ul>
+      )}
+
+      {/* Activity Heatmap */}
+      {habitLogs.length > 0 && (
+        <div className="gf-card p-5 mt-6">
+          <h2
+            className="text-sm font-semibold uppercase tracking-wider mb-4"
+            style={{ color: primaryAccent }}
+          >
+            Activity over the past year
+          </h2>
+          <HabitHeatmap logs={habitLogs} />
+        </div>
       )}
 
       {/* Add-habit modal */}

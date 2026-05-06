@@ -272,6 +272,87 @@ export class GeminiService {
     }
   }
 
+  // -------------------- CORRELATION INSIGHTS --------------------
+
+  async generateCorrelationInsights(data: {
+    days: { date: string; habitsCompleted: number; moodScore: number | null; sleepHours: number | null; tasksCompleted: number }[];
+    totalHabitLogs: number;
+    totalJournalEntries: number;
+  }): Promise<{ title: string; insight: string; type: 'positive' | 'neutral' | 'warning' }[] | null> {
+    if (!this.client) return null;
+
+    const summary = data.days
+      .filter(d => d.moodScore !== null || d.habitsCompleted > 0)
+      .slice(-30)
+      .map(d => `${d.date}: habits=${d.habitsCompleted}, mood=${d.moodScore ?? 'n/a'}, sleep=${d.sleepHours ?? 'n/a'}h, tasks=${d.tasksCompleted}`)
+      .join('\n');
+
+    const prompt = [
+      "You are a wellness data analyst. Analyse the user's 30-day activity log below and produce 3-5 meaningful, specific correlation insights.",
+      '',
+      'Activity log (one row per day):',
+      summary || '(no data yet)',
+      '',
+      `Total habit logs in history: ${data.totalHabitLogs}`,
+      `Total journal entries: ${data.totalJournalEntries}`,
+      '',
+      'Return a JSON array of insight objects. Each object must match:',
+      '{',
+      '  "title": string,   // short headline, max 50 chars',
+      '  "insight": string, // 1-2 sentences. Specific and data-driven. Max 200 chars.',
+      '  "type": "positive" | "neutral" | "warning"',
+      '}',
+      '',
+      'Rules:',
+      '- "positive" = a genuine strength or good pattern',
+      '- "warning"  = something worth watching or improving',
+      '- "neutral"  = an interesting observation with no clear valence',
+      '- If there is not enough data for a real insight, produce a "neutral" card explaining what data would unlock it.',
+      '- Be honest and specific. Do NOT invent numbers not present in the log.',
+      '- Output JSON array only. No markdown.',
+    ].join('\n');
+
+    try {
+      const completion = await this.client.chat.completions.create({
+        model: this.modelName,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: prompt },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.5,
+        max_tokens: 800,
+      });
+
+      const raw = JSON.parse(completion.choices[0]?.message?.content ?? '{}') as
+        | { insights?: unknown[] }
+        | unknown[];
+
+      const arr: unknown[] = Array.isArray(raw)
+        ? raw
+        : Array.isArray((raw as { insights?: unknown[] }).insights)
+          ? ((raw as { insights: unknown[] }).insights)
+          : [];
+
+      return arr
+        .filter((item): item is { title: string; insight: string; type: string } =>
+          typeof (item as { title?: unknown }).title === 'string' &&
+          typeof (item as { insight?: unknown }).insight === 'string',
+        )
+        .map(item => ({
+          title: String(item.title).slice(0, 60),
+          insight: String(item.insight).slice(0, 240),
+          type: (['positive', 'neutral', 'warning'] as const).includes(item.type as 'positive')
+            ? (item.type as 'positive' | 'neutral' | 'warning')
+            : 'neutral',
+        }))
+        .slice(0, 6);
+    } catch (err) {
+      this.logger.warn(`Groq generateCorrelationInsights failed: ${(err as Error).message}`);
+      return null;
+    }
+  }
+
   // -------------------- MOOD TEXT ANALYSIS --------------------
 
   async analyzeMoodText(text: string): Promise<{ score: number; tags: string[]; reflection: string } | null> {
