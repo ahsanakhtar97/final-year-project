@@ -197,6 +197,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           mode={isDark ? "dark" : "light"}
           intensity={0.55}
           position="background"
+          colorTheme={colorTheme}
         />
 
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />

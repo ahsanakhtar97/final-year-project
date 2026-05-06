@@ -23,6 +23,7 @@
 
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
+import { getPalette, type SceneColorTheme } from "@/lib/scene-colors";
 
 export type SceneVariant =
   | "blob"
@@ -52,6 +53,7 @@ interface AmbientSceneProps {
   intensity?: number;
   position?: ScenePosition;
   className?: string;
+  colorTheme?: SceneColorTheme;
 }
 
 export default function AmbientScene({
@@ -60,6 +62,7 @@ export default function AmbientScene({
   intensity = 1,
   position = "background",
   className = "",
+  colorTheme = "green",
 }: AmbientSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -90,28 +93,26 @@ export default function AmbientScene({
     );
     camera.position.set(0, 0, 4.2 + (1 - intensity) * 1.5);
 
-    // ---- Lights (mode-aware) ----
+    // ---- Lights (mode + theme-aware) ----
+    const pal = getPalette(colorTheme);
     scene.add(new THREE.AmbientLight(0xffffff, mode === "light" ? 0.55 : 0.32));
 
-    const keyColor = mode === "light" ? 0x9df2c8 : 0x60d394;
-    const fillColor = mode === "light" ? 0x60d394 : 0x108a54;
-
-    const keyLight = new THREE.PointLight(keyColor, 70 * intensity, 60, 1.6);
+    const keyLight = new THREE.PointLight(pal.keyLight, 70 * intensity, 60, 1.6);
     keyLight.position.set(3.5, 2.5, 4);
     scene.add(keyLight);
 
-    const fillLight = new THREE.PointLight(fillColor, 45 * intensity, 60, 1.6);
+    const fillLight = new THREE.PointLight(pal.fillLight, 45 * intensity, 60, 1.6);
     fillLight.position.set(-4, -2, 2.5);
     scene.add(fillLight);
 
-    const rimLight = new THREE.PointLight(0xc7ffdc, 35 * intensity, 40, 1.8);
+    const rimLight = new THREE.PointLight(pal.rimLight, 35 * intensity, 40, 1.8);
     rimLight.position.set(0, -3.5, -2.5);
     scene.add(rimLight);
 
     // Shared palette + bookkeeping.
-    const baseColor = new THREE.Color(mode === "light" ? "#108a54" : "#3ad594");
-    const emissiveColor = new THREE.Color("#0a3a23");
-    const wireColorHex = mode === "light" ? 0x108a54 : 0xc7ffdc;
+    const baseColor = new THREE.Color(mode === "light" ? pal.baseLight : pal.baseDark);
+    const emissiveColor = new THREE.Color(pal.emissive);
+    const wireColorHex = mode === "light" ? pal.wireLight : pal.wireDark;
     const wireOpacity = mode === "light" ? 0.18 : 0.22;
 
     const disposables: { dispose: () => void }[] = [];
@@ -432,7 +433,7 @@ export default function AmbientScene({
       const geom = new THREE.BufferGeometry();
       geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
       const mat = new THREE.PointsMaterial({
-        color: mode === "light" ? 0x108a54 : 0xc7ffdc,
+        color: mode === "light" ? pal.particlesLight : pal.particlesDark,
         size: 0.045,
         transparent: true,
         opacity: 0.85,
@@ -530,7 +531,7 @@ export default function AmbientScene({
       for (const d of disposables) d.dispose();
       renderer.dispose();
     };
-  }, [variant, mode, intensity]);
+  }, [variant, mode, intensity, colorTheme]);
 
   const positionClasses =
     position === "background" ? "fixed inset-0" : "absolute inset-0";

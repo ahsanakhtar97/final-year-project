@@ -17,8 +17,13 @@
 
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
+import { getPalette, type SceneColorTheme } from "@/lib/scene-colors";
 
-export default function HeroScene() {
+interface HeroSceneProps {
+  colorTheme?: SceneColorTheme;
+}
+
+export default function HeroScene({ colorTheme = "green" }: HeroSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,11 +61,13 @@ export default function HeroScene() {
     const positionAttr = geometry.attributes.position as THREE.BufferAttribute;
     const original = new Float32Array(positionAttr.array);
 
+    // ---- Colours from theme palette ----
+    const pal = getPalette(colorTheme);
+
     // ---- Materials ----
-    // Soft, slightly metallic body so the lights wrap nicely.
     const bodyMat = new THREE.MeshStandardMaterial({
-      color: new THREE.Color("#3ad594"),
-      emissive: new THREE.Color("#0a3a23"),
+      color: new THREE.Color(pal.baseDark),
+      emissive: new THREE.Color(pal.emissive),
       emissiveIntensity: 0.6,
       roughness: 0.42,
       metalness: 0.18,
@@ -69,9 +76,9 @@ export default function HeroScene() {
     const body = new THREE.Mesh(geometry, bodyMat);
     scene.add(body);
 
-    // Translucent wireframe overlay -- adds definition without clutter.
+    // Translucent wireframe overlay.
     const wireMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color("#c7ffdc"),
+      color: new THREE.Color(pal.wireDark),
       wireframe: true,
       transparent: true,
       opacity: 0.14,
@@ -83,15 +90,15 @@ export default function HeroScene() {
     // ---- Lights ----
     scene.add(new THREE.AmbientLight(0xffffff, 0.32));
 
-    const keyLight = new THREE.PointLight(0x60d394, 70, 60, 1.6);
+    const keyLight = new THREE.PointLight(pal.keyLight, 70, 60, 1.6);
     keyLight.position.set(3.5, 2.5, 4);
     scene.add(keyLight);
 
-    const fillLight = new THREE.PointLight(0x108a54, 45, 60, 1.6);
+    const fillLight = new THREE.PointLight(pal.fillLight, 45, 60, 1.6);
     fillLight.position.set(-4, -2, 2.5);
     scene.add(fillLight);
 
-    const rimLight = new THREE.PointLight(0xc7ffdc, 35, 40, 1.8);
+    const rimLight = new THREE.PointLight(pal.rimLight, 35, 40, 1.8);
     rimLight.position.set(0, -3.5, -2.5);
     scene.add(rimLight);
 
@@ -176,7 +183,7 @@ export default function HeroScene() {
       wireMat.dispose();
       renderer.dispose();
     };
-  }, []);
+  }, [colorTheme]);
 
   return (
     <div
