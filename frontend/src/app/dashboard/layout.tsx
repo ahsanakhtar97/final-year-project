@@ -11,7 +11,8 @@ import { Menu, Bell } from "lucide-react";
 import { clearAuth, isJwtExpired } from "@/lib/auth";
 import { isProfessionalRole, type UserRole } from "@/lib/role";
 import { jwtDecode } from "jwt-decode";
-import { ThemeContext } from "@/app/dashboard/theme-context";
+import { ThemeContext, type ColorTheme } from "@/app/dashboard/theme-context";
+import { COLOR_THEMES } from "@/app/dashboard/theme-context";
 import type { SceneVariant } from "@/app/components/ambient-scene";
 import { ErrorBoundary } from "@/app/components/error-boundary";
 import { getUnreadCount } from "@/app/actions/reminders";
@@ -42,6 +43,7 @@ function variantForPath(path: string): SceneVariant {
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [colorTheme, setColorThemeState] = useState<ColorTheme>("green");
   const [isPrivate, setIsPrivate] = useState(false);
   const [isAuthChecked, setIsAuthChecked] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -69,6 +71,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     document.documentElement.classList.toggle("dark", theme === "dark");
     localStorage.setItem("global_theme", theme);
   }, [theme]);
+
+  // Hydrate colour theme
+  useEffect(() => {
+    const saved = localStorage.getItem("color_theme") as ColorTheme | null;
+    if (saved) setColorThemeState(saved);
+  }, []);
+
+  // Apply data-color-theme attribute + persist
+  useEffect(() => {
+    document.documentElement.setAttribute("data-color-theme", colorTheme);
+    localStorage.setItem("color_theme", colorTheme);
+  }, [colorTheme]);
+
+  const setColorTheme = (t: ColorTheme) => setColorThemeState(t);
 
   // Auth guard. We not only require a token but also check that it isn't
   // expired -- otherwise the user lingers on the dashboard until the first
@@ -151,7 +167,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   }
 
   const isDark = theme === "dark";
-  const primaryAccent = isDark ? "#8fe8b2" : "#163b25";
+  const primaryAccent = COLOR_THEMES.find(t => t.id === colorTheme)?.accent ?? "#6effc4";
 
   return (
     <ThemeContext.Provider
@@ -162,15 +178,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         isPrivate,
         togglePrivacy,
         primaryAccent,
+        colorTheme,
+        setColorTheme,
       }}
     >
       <div
         className="relative flex min-h-screen"
         style={{
-          background: isDark
-            ? "linear-gradient(180deg,#06130f,#0f2a21)"
-            : "linear-gradient(180deg,#eafff0,#cdecd4)",
-          color: isDark ? "#e7f7ee" : "#123716",
+          background: "var(--gf-bg)",
+          color: "var(--gf-text)",
           transition: "background 500ms ease, color 300ms ease",
         }}
       >
@@ -193,13 +209,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             className="md:hidden sticky top-0 z-20 flex items-center justify-between px-4 py-3 border-b"
             style={{
               background: isDark
-                ? "rgba(6,19,15,0.85)"
+                ? `rgba(var(--gf-glass-dark-rgb, 6,19,15), 0.85)`
                 : "rgba(255,255,255,0.85)",
               backdropFilter: "blur(12px)",
               WebkitBackdropFilter: "blur(12px)",
-              borderBottomColor: isDark
-                ? "rgba(174,240,201,0.10)"
-                : "rgba(22,59,37,0.10)",
+              borderBottomColor: "var(--gf-border)",
             }}
           >
             <button

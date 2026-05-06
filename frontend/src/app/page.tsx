@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   Menu,
   X,
@@ -124,6 +124,20 @@ export default function Home() {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // Apply saved colour theme so the landing page matches the dashboard.
+  useEffect(() => {
+    const saved = localStorage.getItem("color_theme");
+    if (saved) {
+      document.documentElement.setAttribute("data-color-theme", saved);
+    }
+    const savedMode = localStorage.getItem("global_theme");
+    if (savedMode === "dark") {
+      document.documentElement.classList.add("dark");
+    } else if (savedMode === "light") {
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
   const homeRef     = useRef<HTMLDivElement>(null);
   const aboutRef    = useRef<HTMLDivElement>(null);
   const featuresRef = useRef<HTMLDivElement>(null);
@@ -213,10 +227,11 @@ export default function Home() {
               whileHover={{ scale: 1.04, boxShadow: "0 0 28px rgba(92,242,255,0.45)" }}
               whileTap={{ scale: 0.96 }}
               onClick={() => router.push("/login")}
-              className="rounded-xl px-4 py-2 sm:px-6 sm:py-2 text-sm sm:text-base font-bold text-[#012016]"
+              className="rounded-xl px-4 py-2 sm:px-6 sm:py-2 text-sm sm:text-base font-bold gf-btn-primary"
               style={{
-                background: "linear-gradient(135deg,#6effc4 0%,#1fbf75 55%,#108a54 100%)",
-                boxShadow: "0 6px 20px rgba(31,191,117,0.4), 0 0 0 1px rgba(110,255,196,0.45) inset",
+                background: "linear-gradient(135deg,var(--gf-accent) 0%,var(--gf-accent-mid) 55%,var(--gf-accent-deep) 100%)",
+                boxShadow: "0 6px 20px rgba(var(--gf-accent-rgb),0.4), 0 0 0 1px rgba(var(--gf-accent-rgb),0.45) inset",
+                color: "var(--gf-btn-primary-text)",
               }}
             >
               Login
@@ -299,13 +314,14 @@ export default function Home() {
 
         <div className="relative mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
           <motion.button
-            whileHover={{ scale: 1.05, boxShadow: "0 18px 50px rgba(31,191,117,0.55), 0 0 36px rgba(92,242,255,0.4)" }}
+            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => router.push("/signup")}
-            className="group inline-flex items-center gap-2 rounded-2xl px-7 py-3.5 text-base font-bold text-[#012016]"
+            className="group inline-flex items-center gap-2 rounded-2xl px-7 py-3.5 text-base font-bold"
             style={{
-              background: "linear-gradient(135deg,#6effc4 0%,#1fbf75 55%,#108a54 100%)",
-              boxShadow: "0 14px 38px rgba(31,191,117,0.45), 0 0 0 1px rgba(110,255,196,0.55) inset",
+              background: "linear-gradient(135deg,var(--gf-accent) 0%,var(--gf-accent-mid) 55%,var(--gf-accent-deep) 100%)",
+              boxShadow: "0 14px 38px rgba(var(--gf-accent-rgb),0.45), 0 0 0 1px rgba(var(--gf-accent-rgb),0.55) inset",
+              color: "var(--gf-btn-primary-text)",
             }}
           >
             Get started free
@@ -354,7 +370,7 @@ export default function Home() {
                 className="text-3xl sm:text-4xl font-bold"
                 style={{
                   fontFamily: "'Lora', serif",
-                  background: "linear-gradient(135deg,#6effc4,#1fbf75)",
+                  background: "linear-gradient(135deg,var(--gf-accent),var(--gf-accent-mid))",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                 }}
@@ -440,7 +456,7 @@ export default function Home() {
             <div
               aria-hidden
               className="hidden md:block absolute top-10 left-[16.66%] right-[16.66%] h-px"
-              style={{ background: "linear-gradient(90deg, transparent, rgba(110,255,196,0.3), transparent)" }}
+              style={{ background: "linear-gradient(90deg, transparent, rgba(var(--gf-accent-rgb),0.3), transparent)" }}
             />
             {HOW_IT_WORKS.map(({ step, title, desc }, i) => (
               <motion.div
@@ -454,9 +470,9 @@ export default function Home() {
                 <div
                   className="mb-5 flex h-20 w-20 items-center justify-center rounded-full text-2xl font-bold"
                   style={{
-                    background: "linear-gradient(135deg, rgba(31,191,117,0.2), rgba(16,138,84,0.1))",
-                    border: "2px solid rgba(110,255,196,0.3)",
-                    color: "#6effc4",
+                    background: "linear-gradient(135deg, rgba(var(--gf-accent-rgb),0.2), rgba(var(--gf-accent-rgb),0.08))",
+                    border: "2px solid rgba(var(--gf-accent-rgb),0.3)",
+                    color: "var(--gf-accent)",
                     fontFamily: "'Lora', serif",
                   }}
                 >
@@ -546,29 +562,29 @@ export default function Home() {
                 transition={{ duration: 0.5, delay: i * 0.12 }}
                 whileHover={{ y: -6, scale: 1.03 }}
                 className="flex-1 w-full max-w-xs rounded-2xl border border-white/10 p-7 text-center backdrop-blur"
-                style={{ background: "rgba(10,45,30,0.7)", boxShadow: "0 10px 30px rgba(0,0,0,0.3)" }}
+                style={{ background: "rgba(var(--gf-glass-dark-rgb,10,45,30),0.7)", boxShadow: "0 10px 30px rgba(0,0,0,0.3)" }}
               >
                 <div
                   className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold"
                   style={{
-                    background: "linear-gradient(135deg,#1fbf75,#108a54)",
-                    color: "#012016",
-                    boxShadow: "0 6px 20px rgba(31,191,117,0.35)",
+                    background: "linear-gradient(135deg,var(--gf-accent-mid),var(--gf-accent-deep))",
+                    color: "var(--gf-btn-primary-text)",
+                    boxShadow: "0 6px 20px rgba(var(--gf-accent-rgb),0.35)",
                     fontFamily: "'Lora', serif",
                   }}
                 >
                   {name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
                 </div>
-                <h3 className="text-lg font-bold text-[#c7ffdc]" style={{ fontFamily: "'Lora', serif" }}>
+                <h3 className="text-lg font-bold" style={{ fontFamily: "'Lora', serif", color: "var(--gf-accent-3)" }}>
                   {name}
                 </h3>
                 <div
                   className="mt-1 inline-block rounded-full px-3 py-0.5 text-xs font-semibold"
-                  style={{ background: "rgba(110,255,196,0.12)", color: "#6effc4" }}
+                  style={{ background: "rgba(var(--gf-accent-rgb),0.12)", color: "var(--gf-accent)" }}
                 >
                   {roll}
                 </div>
-                <p className="mt-2 text-xs text-[#9df2c8]/60">{role} Developer</p>
+                <p className="mt-2 text-xs" style={{ color: "rgba(var(--gf-accent-rgb),0.6)" }}>{role} Developer</p>
               </motion.div>
             ))}
           </div>
@@ -630,25 +646,26 @@ export default function Home() {
         <div
           className="rounded-3xl p-10 sm:p-14 text-center"
           style={{
-            background: "linear-gradient(135deg,rgba(31,191,117,0.15) 0%,rgba(16,138,84,0.08) 100%)",
-            border: "1px solid rgba(110,255,196,0.2)",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.3), inset 0 1px 0 rgba(110,255,196,0.1)",
+            background: "linear-gradient(135deg,rgba(var(--gf-accent-rgb),0.15) 0%,rgba(var(--gf-accent-rgb),0.06) 100%)",
+            border: "1px solid rgba(var(--gf-accent-rgb),0.2)",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.3), inset 0 1px 0 rgba(var(--gf-accent-rgb),0.1)",
           }}
         >
-          <h2 className="text-3xl sm:text-4xl font-bold text-[#c7ffdc]" style={{ fontFamily: "'Lora', serif" }}>
+          <h2 className="text-3xl sm:text-4xl font-bold" style={{ fontFamily: "'Lora', serif", color: "var(--gf-accent-3)" }}>
             Start your wellness journey today
           </h2>
-          <p className="mt-4 text-[#9df2c8]/80 max-w-md mx-auto">
+          <p className="mt-4 max-w-md mx-auto" style={{ color: "rgba(var(--gf-accent-rgb),0.7)" }}>
             Free to use. No credit card needed. Just you, your growth, and a space to breathe.
           </p>
           <motion.button
-            whileHover={{ scale: 1.05, boxShadow: "0 18px 50px rgba(31,191,117,0.55)" }}
+            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => router.push("/signup")}
-            className="group mt-8 inline-flex items-center gap-2 rounded-2xl px-8 py-4 text-base font-bold text-[#012016]"
+            className="group mt-8 inline-flex items-center gap-2 rounded-2xl px-8 py-4 text-base font-bold"
             style={{
-              background: "linear-gradient(135deg,#6effc4 0%,#1fbf75 55%,#108a54 100%)",
-              boxShadow: "0 14px 38px rgba(31,191,117,0.45)",
+              background: "linear-gradient(135deg,var(--gf-accent) 0%,var(--gf-accent-mid) 55%,var(--gf-accent-deep) 100%)",
+              boxShadow: "0 14px 38px rgba(var(--gf-accent-rgb),0.45)",
+              color: "var(--gf-btn-primary-text)",
             }}
           >
             Create free account

@@ -31,7 +31,7 @@ import {
   Gamepad2,
   Bell,
 } from "lucide-react";
-import { useTheme } from "@/app/dashboard/theme-context";
+import { useTheme, COLOR_THEMES } from "@/app/dashboard/theme-context";
 
 type Role = "patient" | "psychiatrist" | "psychologist";
 
@@ -41,37 +41,35 @@ type NavItem = {
   icon: React.ComponentType<{ size?: number; className?: string }>;
 };
 
-// Patient-facing app surface (the original wellness suite + new Care).
 const PATIENT_NAV: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/to-do", label: "To Do List", icon: CheckSquare },
-  { href: "/dashboard/habit-tracker", label: "Habit Tracker", icon: Heart },
-  { href: "/dashboard/goals", label: "Goals", icon: Target },
-  { href: "/dashboard/journal", label: "Growth Journal", icon: BookOpen },
-  { href: "/dashboard/focus", label: "Focus Timer", icon: Timer },
-  { href: "/dashboard/sleep", label: "Sleep", icon: Moon },
-  { href: "/dashboard/mood", label: "Mood", icon: Smile },
-  { href: "/dashboard/games", label: "Mind Games", icon: Gamepad2 },
-  { href: "/dashboard/calendar", label: "Calendar", icon: Calendar },
-  { href: "/dashboard/coach", label: "Coach", icon: Sparkles },
-  { href: "/dashboard/insights", label: "Insights", icon: TrendingUp },
-  { href: "/dashboard/achievements", label: "Achievements", icon: Trophy },
-  { href: "/dashboard/buddies", label: "Buddies", icon: Users },
-  { href: "/dashboard/reports", label: "Weekly Reports", icon: FileText },
-  { href: "/dashboard/care", label: "Care", icon: Stethoscope },
-  { href: "/dashboard/appointments", label: "Appointments", icon: ClipboardList },
-  { href: "/dashboard/reminders", label: "Reminders", icon: Bell },
-  { href: "/crisis", label: "Crisis support", icon: LifeBuoy },
-  { href: "/dashboard/profile", label: "Profile", icon: User },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
+  { href: "/dashboard",                label: "Dashboard",      icon: LayoutDashboard },
+  { href: "/dashboard/to-do",          label: "To Do List",     icon: CheckSquare },
+  { href: "/dashboard/habit-tracker",  label: "Habit Tracker",  icon: Heart },
+  { href: "/dashboard/goals",          label: "Goals",          icon: Target },
+  { href: "/dashboard/journal",        label: "Growth Journal", icon: BookOpen },
+  { href: "/dashboard/focus",          label: "Focus Timer",    icon: Timer },
+  { href: "/dashboard/sleep",          label: "Sleep",          icon: Moon },
+  { href: "/dashboard/mood",           label: "Mood",           icon: Smile },
+  { href: "/dashboard/games",          label: "Mind Games",     icon: Gamepad2 },
+  { href: "/dashboard/calendar",       label: "Calendar",       icon: Calendar },
+  { href: "/dashboard/coach",          label: "Coach",          icon: Sparkles },
+  { href: "/dashboard/insights",       label: "Insights",       icon: TrendingUp },
+  { href: "/dashboard/achievements",   label: "Achievements",   icon: Trophy },
+  { href: "/dashboard/buddies",        label: "Buddies",        icon: Users },
+  { href: "/dashboard/reports",        label: "Weekly Reports", icon: FileText },
+  { href: "/dashboard/care",           label: "Care",           icon: Stethoscope },
+  { href: "/dashboard/appointments",   label: "Appointments",   icon: ClipboardList },
+  { href: "/dashboard/reminders",      label: "Reminders",      icon: Bell },
+  { href: "/crisis",                   label: "Crisis support", icon: LifeBuoy },
+  { href: "/dashboard/profile",        label: "Profile",        icon: User },
+  { href: "/dashboard/settings",       label: "Settings",       icon: Settings },
 ];
 
-// Provider surface -- kept tight on purpose. Practice + public profile only.
 const PROVIDER_NAV: NavItem[] = [
-  { href: "/dashboard/provider", label: "Practice", icon: Briefcase },
+  { href: "/dashboard/provider",         label: "Practice",       icon: Briefcase },
   { href: "/dashboard/provider/profile", label: "Public profile", icon: User },
-  { href: "/crisis", label: "Crisis support", icon: LifeBuoy },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
+  { href: "/crisis",                     label: "Crisis support", icon: LifeBuoy },
+  { href: "/dashboard/settings",         label: "Settings",       icon: Settings },
 ];
 
 function navForRole(role: Role): NavItem[] {
@@ -86,7 +84,7 @@ interface SidebarProps {
 export default function Sidebar({ open, onClose }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, colorTheme, setColorTheme } = useTheme();
   const isDark = theme === "dark";
 
   const [user, setUser] = useState<{ name?: string; email?: string; role?: Role }>({});
@@ -98,9 +96,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
     try {
       const payload = jwtDecode<{ name?: string; email?: string; role?: Role }>(token);
       setUser(payload);
-    } catch {
-      /* ignore bad token */
-    }
+    } catch { /* ignore bad token */ }
   }, []);
 
   function handleLogout() {
@@ -128,10 +124,10 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         ${open ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}
         style={{
           background: isDark
-            ? "linear-gradient(180deg, #0b1d18 0%, #0f241f 100%)"
-            : "linear-gradient(180deg, #e8f8ec 0%, #c9e9d0 100%)",
-          borderRightColor: isDark ? "rgba(174,240,201,0.10)" : "rgba(22,59,37,0.10)",
-          color: isDark ? "#e7f7ee" : "#123716",
+            ? "linear-gradient(180deg, var(--gf-sidebar-dark-from) 0%, var(--gf-sidebar-dark-to) 100%)"
+            : "linear-gradient(180deg, var(--gf-sidebar-light-from) 0%, var(--gf-sidebar-light-to) 100%)",
+          borderRightColor: "var(--gf-border)",
+          color: "var(--gf-text)",
         }}
         aria-label="Primary navigation"
       >
@@ -141,10 +137,9 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             <div
               className="flex h-9 w-9 items-center justify-center rounded-xl"
               style={{
-                background:
-                  "linear-gradient(135deg,#6effc4 0%,#1fbf75 55%,#108a54 100%)",
-                color: "#052818",
-                boxShadow: "0 6px 18px rgba(16,138,84,0.45), 0 0 18px rgba(110,255,196,0.35), inset 0 0 0 1px rgba(110,255,196,0.55)",
+                background: "linear-gradient(135deg, var(--gf-accent) 0%, var(--gf-accent-mid) 55%, var(--gf-accent-deep) 100%)",
+                color: "var(--gf-btn-primary-text)",
+                boxShadow: `0 6px 18px rgba(var(--gf-accent-rgb), 0.45), 0 0 18px rgba(var(--gf-accent-rgb), 0.35), inset 0 0 0 1px rgba(var(--gf-accent-rgb), 0.55)`,
               }}
             >
               <Sparkles size={18} />
@@ -164,19 +159,45 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         </div>
 
         {/* User greeting */}
-        <div className="px-5 pb-4">
+        <div className="px-5 pb-3">
           <div className="text-xs gf-muted uppercase tracking-wider">Welcome back</div>
           <div className="text-base font-semibold truncate">
             {user.name || user.email || "Friend"}
           </div>
         </div>
 
-        {/* Theme toggle */}
-        <div className="px-3">
+        {/* ── Colour theme swatches ──────────────────────────── */}
+        <div className="px-5 pb-3">
+          <div className="text-[10px] gf-muted uppercase tracking-wider mb-1.5">Theme</div>
+          <div className="flex items-center gap-1.5">
+            {COLOR_THEMES.map(t => (
+              <button
+                key={t.id}
+                onClick={() => setColorTheme(t.id)}
+                title={t.label}
+                aria-label={t.label}
+                className="relative h-5 w-5 rounded-full transition-transform hover:scale-110 focus:outline-none"
+                style={{ background: t.accent }}
+              >
+                {colorTheme === t.id && (
+                  <span
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      boxShadow: `0 0 0 2px var(--gf-text), 0 0 0 3.5px ${t.accent}`,
+                    }}
+                  />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Light / dark toggle */}
+        <div className="px-3 pb-1">
           <button
             onClick={toggleTheme}
             className="gf-btn gf-btn-ghost w-full !justify-start"
-            aria-label="Toggle color theme"
+            aria-label="Toggle colour mode"
           >
             {isDark ? <Sun size={18} /> : <Moon size={18} />}
             <span>{isDark ? "Light Mode" : "Dark Mode"}</span>
@@ -184,7 +205,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         </div>
 
         {/* Nav */}
-        <nav className="mt-4 flex-1 overflow-y-auto px-3 gf-scroll">
+        <nav className="mt-2 flex-1 overflow-y-auto px-3 gf-scroll">
           <ul className="flex flex-col gap-1">
             {navItems.map(({ href, label, icon: Icon }) => {
               const active = isActive(href);
@@ -196,17 +217,11 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                     className="group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all"
                     style={{
                       background: active
-                        ? isDark
-                          ? "linear-gradient(90deg, rgba(110,255,196,0.18) 0%, rgba(92,242,255,0.06) 100%)"
-                          : "linear-gradient(90deg, rgba(31,191,117,0.18) 0%, rgba(92,242,255,0.06) 100%)"
+                        ? `linear-gradient(90deg, rgba(var(--gf-accent-rgb), 0.18) 0%, rgba(var(--gf-accent-2-rgb), 0.06) 100%)`
                         : "transparent",
-                      color: active
-                        ? isDark
-                          ? "#c7ffdc"
-                          : "#0c4a2a"
-                        : "inherit",
+                      color: active ? "var(--gf-accent)" : "inherit",
                       boxShadow: active
-                        ? "inset 3px 0 0 0 #6effc4, 0 0 18px -4px rgba(92,242,255,0.45)"
+                        ? `inset 3px 0 0 0 var(--gf-accent), 0 0 18px -4px rgba(var(--gf-accent-2-rgb), 0.45)`
                         : "none",
                     }}
                   >
@@ -216,8 +231,8 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                       <span
                         className="ml-auto h-2 w-2 rounded-full"
                         style={{
-                          background: "#6effc4",
-                          boxShadow: "0 0 10px #6effc4, 0 0 4px #ffffff",
+                          background: "var(--gf-accent)",
+                          boxShadow: "0 0 10px var(--gf-accent), 0 0 4px #ffffff",
                         }}
                       />
                     )}

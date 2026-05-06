@@ -25,9 +25,11 @@ import {
   Shield,
   Eye,
   EyeOff,
+  Palette,
+  Check,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTheme } from "@/app/dashboard/theme-context";
+import { useTheme, COLOR_THEMES, type ColorTheme } from "@/app/dashboard/theme-context";
 import { getUserId } from "@/lib/utils";
 import { clearAuth } from "@/lib/auth";
 import { getTasks } from "@/app/actions/tasks";
@@ -54,7 +56,7 @@ const DEFAULT_PREFS: PomodoroPrefs = {
 };
 
 export default function SettingsPage() {
-  const { primaryAccent, isDark, theme, toggleTheme, isPrivate, togglePrivacy } =
+  const { primaryAccent, isDark, theme, toggleTheme, isPrivate, togglePrivacy, colorTheme, setColorTheme } =
     useTheme();
   const router = useRouter();
 
@@ -209,6 +211,72 @@ export default function SettingsPage() {
           {msg}
         </div>
       ) : null}
+
+      {/* Colour Theme */}
+      <div className="gf-card p-4 sm:p-5 mb-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Palette size={16} style={{ color: "var(--gf-accent)" }} />
+          <h3 className="gf-h2">Colour Theme</h3>
+        </div>
+        <p className="gf-muted text-xs mb-4">
+          Every theme is a full neon palette — backgrounds, glows, buttons and cards all shift together.
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {COLOR_THEMES.map(t => {
+            const active = colorTheme === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setColorTheme(t.id as ColorTheme)}
+                className="relative rounded-xl overflow-hidden transition-all text-left focus:outline-none"
+                style={{
+                  border: `2px solid ${active ? t.accent : "var(--gf-border)"}`,
+                  boxShadow: active
+                    ? `0 0 0 1px ${t.accent}44, 0 8px 24px ${t.accent}33`
+                    : undefined,
+                  transform: active ? "scale(1.03)" : undefined,
+                }}
+                aria-pressed={active}
+                aria-label={`Select ${t.label}`}
+              >
+                {/* Mini preview */}
+                <div
+                  className="h-14 w-full flex items-end gap-1.5 px-2 pb-2"
+                  style={{ background: t.bg }}
+                >
+                  <div className="h-8 w-2 rounded-sm" style={{ background: `${t.accent}44` }} />
+                  <div className="flex-1 flex flex-col gap-1">
+                    <div className="h-1.5 rounded-sm w-3/4" style={{ background: `${t.accent}66` }} />
+                    <div className="h-1.5 rounded-sm w-1/2" style={{ background: `${t.accent}33` }} />
+                  </div>
+                  <div
+                    className="h-3 w-3 rounded-full mb-0.5 shrink-0"
+                    style={{ background: t.accent, boxShadow: `0 0 8px ${t.accent}` }}
+                  />
+                </div>
+                {/* Label */}
+                <div
+                  className="flex items-center justify-between px-2.5 py-1.5"
+                  style={{ background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)" }}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: t.accent }} />
+                    <span className="text-[11px] font-semibold truncate">{t.label}</span>
+                  </div>
+                  {active && (
+                    <span
+                      className="flex h-4 w-4 items-center justify-center rounded-full shrink-0"
+                      style={{ background: t.accent, color: "#000" }}
+                    >
+                      <Check size={9} strokeWidth={3} />
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Appearance */}
       <Section title="Appearance">

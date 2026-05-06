@@ -4,9 +4,292 @@
 
 /* =========================================================
    GrowFlow — shared design tokens
+   =========================================================
+   Color theming works via data-color-theme on <html>.
+   Supported values: "green" (default), "purple", "blue",
+   "pink", "orange", "yellow".
+   The dark/light toggle continues to work independently.
    ========================================================= */
+
+/* ----------------------------------------------------------
+   1.  PER-THEME RAW VARIABLES
+       Each block sets only the "building block" vars.
+       The computed vars (--gf-bg, --gf-surface, etc.)
+       live in :root and .dark and reference these, so they
+       update automatically for any theme/mode combo.
+   ---------------------------------------------------------- */
+
+/* ── GREEN (default) ──────────────────────────────────────── */
 :root {
-  /* Brand palette (greens) */
+  --gf-accent:             #6effc4;
+  --gf-accent-2:           #5cf2ff;
+  --gf-accent-3:           #9df2c8;
+  --gf-accent-mid:         #1fbf75;
+  --gf-accent-deep:        #108a54;
+  --gf-accent-rgb:         110, 255, 196;
+  --gf-accent-2-rgb:       92, 242, 255;
+  --gf-btn-primary-text:   #052818;
+
+  --gf-bg-light-from:      #eafff0;
+  --gf-bg-light-to:        #cdecd4;
+  --gf-bg-dark-from:       #06130f;
+  --gf-bg-dark-to:         #0f2a21;
+
+  --gf-surface-light:      #ffffff;
+  --gf-surface-light-2:    #f6fbf7;
+  --gf-surface-dark:       #0f241f;
+  --gf-surface-dark-2:     #0b1d18;
+  --gf-glass-dark-rgb:     10, 30, 22;
+
+  --gf-text-light:         #123716;
+  --gf-muted-light:        #3e6f4a;
+  --gf-text-dark:          #e7f7ee;
+  --gf-muted-dark:         #a8d9bb;
+
+  --gf-border-light:       rgba(22, 59, 37, 0.12);
+  --gf-border-dark:        rgba(174, 240, 201, 0.10);
+  --gf-ring-light:         rgba(31, 191, 117, 0.45);
+  --gf-ring-dark:          rgba(143, 232, 178, 0.45);
+
+  --gf-sidebar-light-from: #e8f8ec;
+  --gf-sidebar-light-to:   #c9e9d0;
+  --gf-sidebar-dark-from:  #0b1d18;
+  --gf-sidebar-dark-to:    #0f241f;
+}
+
+/* ── PURPLE ───────────────────────────────────────────────── */
+:root[data-color-theme="purple"] {
+  --gf-accent:             #c084fc;
+  --gf-accent-2:           #818cf8;
+  --gf-accent-3:           #d8b4fe;
+  --gf-accent-mid:         #9333ea;
+  --gf-accent-deep:        #7c3aed;
+  --gf-accent-rgb:         192, 132, 252;
+  --gf-accent-2-rgb:       129, 140, 248;
+  --gf-btn-primary-text:   #1a0040;
+
+  --gf-bg-light-from:      #faf5ff;
+  --gf-bg-light-to:        #ede9fe;
+  --gf-bg-dark-from:       #0d0b1a;
+  --gf-bg-dark-to:         #160d2a;
+
+  --gf-surface-light:      #ffffff;
+  --gf-surface-light-2:    #f9f5ff;
+  --gf-surface-dark:       #160d2a;
+  --gf-surface-dark-2:     #0d0b1a;
+  --gf-glass-dark-rgb:     13, 11, 26;
+
+  --gf-text-light:         #2e1065;
+  --gf-muted-light:        #6d28d9;
+  --gf-text-dark:          #f3e8ff;
+  --gf-muted-dark:         #c4b5fd;
+
+  --gf-border-light:       rgba(109, 40, 217, 0.15);
+  --gf-border-dark:        rgba(192, 132, 252, 0.12);
+  --gf-ring-light:         rgba(147, 51, 234, 0.45);
+  --gf-ring-dark:          rgba(192, 132, 252, 0.45);
+
+  --gf-sidebar-light-from: #f3e8ff;
+  --gf-sidebar-light-to:   #ede9fe;
+  --gf-sidebar-dark-from:  #0d0b1a;
+  --gf-sidebar-dark-to:    #160d2a;
+}
+
+/* ── BLUE ─────────────────────────────────────────────────── */
+:root[data-color-theme="blue"] {
+  --gf-accent:             #60a5fa;
+  --gf-accent-2:           #38bdf8;
+  --gf-accent-3:           #93c5fd;
+  --gf-accent-mid:         #2563eb;
+  --gf-accent-deep:        #1d4ed8;
+  --gf-accent-rgb:         96, 165, 250;
+  --gf-accent-2-rgb:       56, 189, 248;
+  --gf-btn-primary-text:   #001440;
+
+  --gf-bg-light-from:      #eff6ff;
+  --gf-bg-light-to:        #dbeafe;
+  --gf-bg-dark-from:       #050b1a;
+  --gf-bg-dark-to:         #0c1a35;
+
+  --gf-surface-light:      #ffffff;
+  --gf-surface-light-2:    #f0f7ff;
+  --gf-surface-dark:       #0c1a35;
+  --gf-surface-dark-2:     #050b1a;
+  --gf-glass-dark-rgb:     8, 18, 45;
+
+  --gf-text-light:         #1e3a5f;
+  --gf-muted-light:        #1d4ed8;
+  --gf-text-dark:          #e0f2fe;
+  --gf-muted-dark:         #93c5fd;
+
+  --gf-border-light:       rgba(29, 78, 216, 0.12);
+  --gf-border-dark:        rgba(96, 165, 250, 0.12);
+  --gf-ring-light:         rgba(37, 99, 235, 0.45);
+  --gf-ring-dark:          rgba(96, 165, 250, 0.45);
+
+  --gf-sidebar-light-from: #e0f2fe;
+  --gf-sidebar-light-to:   #dbeafe;
+  --gf-sidebar-dark-from:  #050b1a;
+  --gf-sidebar-dark-to:    #0c1a35;
+}
+
+/* ── PINK ─────────────────────────────────────────────────── */
+:root[data-color-theme="pink"] {
+  --gf-accent:             #f472b6;
+  --gf-accent-2:           #e879f9;
+  --gf-accent-3:           #f9a8d4;
+  --gf-accent-mid:         #ec4899;
+  --gf-accent-deep:        #db2777;
+  --gf-accent-rgb:         244, 114, 182;
+  --gf-accent-2-rgb:       232, 121, 249;
+  --gf-btn-primary-text:   #3b0020;
+
+  --gf-bg-light-from:      #fdf2f8;
+  --gf-bg-light-to:        #fce7f3;
+  --gf-bg-dark-from:       #1a0b14;
+  --gf-bg-dark-to:         #2d0e22;
+
+  --gf-surface-light:      #ffffff;
+  --gf-surface-light-2:    #fdf0f7;
+  --gf-surface-dark:       #2d0e22;
+  --gf-surface-dark-2:     #1a0b14;
+  --gf-glass-dark-rgb:     26, 11, 20;
+
+  --gf-text-light:         #500724;
+  --gf-muted-light:        #9d174d;
+  --gf-text-dark:          #fce7f3;
+  --gf-muted-dark:         #f9a8d4;
+
+  --gf-border-light:       rgba(157, 23, 77, 0.12);
+  --gf-border-dark:        rgba(244, 114, 182, 0.12);
+  --gf-ring-light:         rgba(236, 72, 153, 0.45);
+  --gf-ring-dark:          rgba(244, 114, 182, 0.45);
+
+  --gf-sidebar-light-from: #fce7f3;
+  --gf-sidebar-light-to:   #fbcfe8;
+  --gf-sidebar-dark-from:  #1a0b14;
+  --gf-sidebar-dark-to:    #2d0e22;
+}
+
+/* ── ORANGE ───────────────────────────────────────────────── */
+:root[data-color-theme="orange"] {
+  --gf-accent:             #fb923c;
+  --gf-accent-2:           #fbbf24;
+  --gf-accent-3:           #fed7aa;
+  --gf-accent-mid:         #f97316;
+  --gf-accent-deep:        #ea580c;
+  --gf-accent-rgb:         251, 146, 60;
+  --gf-accent-2-rgb:       251, 191, 36;
+  --gf-btn-primary-text:   #2d0a00;
+
+  --gf-bg-light-from:      #fff7ed;
+  --gf-bg-light-to:        #ffedd5;
+  --gf-bg-dark-from:       #1a0f07;
+  --gf-bg-dark-to:         #2a1608;
+
+  --gf-surface-light:      #ffffff;
+  --gf-surface-light-2:    #fff3e0;
+  --gf-surface-dark:       #2a1608;
+  --gf-surface-dark-2:     #1a0f07;
+  --gf-glass-dark-rgb:     26, 15, 7;
+
+  --gf-text-light:         #431407;
+  --gf-muted-light:        #9a3412;
+  --gf-text-dark:          #ffedd5;
+  --gf-muted-dark:         #fdba74;
+
+  --gf-border-light:       rgba(154, 52, 18, 0.12);
+  --gf-border-dark:        rgba(251, 146, 60, 0.12);
+  --gf-ring-light:         rgba(249, 115, 22, 0.45);
+  --gf-ring-dark:          rgba(251, 146, 60, 0.45);
+
+  --gf-sidebar-light-from: #ffedd5;
+  --gf-sidebar-light-to:   #fed7aa;
+  --gf-sidebar-dark-from:  #1a0f07;
+  --gf-sidebar-dark-to:    #2a1608;
+}
+
+/* ── YELLOW ───────────────────────────────────────────────── */
+:root[data-color-theme="yellow"] {
+  --gf-accent:             #fde047;
+  --gf-accent-2:           #facc15;
+  --gf-accent-3:           #fef08a;
+  --gf-accent-mid:         #eab308;
+  --gf-accent-deep:        #ca8a04;
+  --gf-accent-rgb:         253, 224, 71;
+  --gf-accent-2-rgb:       250, 204, 21;
+  --gf-btn-primary-text:   #2d1a00;
+
+  --gf-bg-light-from:      #fefce8;
+  --gf-bg-light-to:        #fef9c3;
+  --gf-bg-dark-from:       #1a1600;
+  --gf-bg-dark-to:         #2a2200;
+
+  --gf-surface-light:      #ffffff;
+  --gf-surface-light-2:    #fefce8;
+  --gf-surface-dark:       #2a2200;
+  --gf-surface-dark-2:     #1a1600;
+  --gf-glass-dark-rgb:     26, 22, 0;
+
+  --gf-text-light:         #422006;
+  --gf-muted-light:        #854d0e;
+  --gf-text-dark:          #fefce8;
+  --gf-muted-dark:         #fde047;
+
+  --gf-border-light:       rgba(133, 77, 14, 0.12);
+  --gf-border-dark:        rgba(253, 224, 71, 0.12);
+  --gf-ring-light:         rgba(234, 179, 8, 0.45);
+  --gf-ring-dark:          rgba(253, 224, 71, 0.45);
+
+  --gf-sidebar-light-from: #fef9c3;
+  --gf-sidebar-light-to:   #fef08a;
+  --gf-sidebar-dark-from:  #1a1600;
+  --gf-sidebar-dark-to:    #2a2200;
+}
+
+/* ----------------------------------------------------------
+   2.  COMPUTED TOKENS  (derived from the raw vars above)
+       These are what all the components actually reference.
+   ---------------------------------------------------------- */
+:root {
+  /* Light-mode computed surfaces */
+  --gf-bg:        linear-gradient(180deg, var(--gf-bg-light-from) 0%, var(--gf-bg-light-to) 100%);
+  --gf-surface:   var(--gf-surface-light);
+  --gf-surface-2: var(--gf-surface-light-2);
+  --gf-text:      var(--gf-text-light);
+  --gf-muted:     var(--gf-muted-light);
+  --gf-border:    var(--gf-border-light);
+  --gf-ring:      var(--gf-ring-light);
+
+  /* Glass (light mode = white tint) */
+  --gf-glass-bg:        rgba(255, 255, 255, 0.55);
+  --gf-glass-bg-soft:   rgba(255, 255, 255, 0.32);
+
+  /* Shadows */
+  --gf-shadow-sm: 0 1px 2px rgba(12, 70, 36, 0.06);
+  --gf-shadow:    0 6px 20px rgba(12, 70, 36, 0.10);
+  --gf-shadow-lg: 0 18px 50px rgba(12, 70, 36, 0.15);
+
+  /* Radii + motion */
+  --gf-radius-sm: 8px;
+  --gf-radius:    14px;
+  --gf-radius-lg: 20px;
+  --gf-ease:      cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Holo / neon  (alias to accent vars so they update automatically) */
+  --gf-neon-mint:         var(--gf-accent);
+  --gf-neon-cyan:         var(--gf-accent-2);
+  --gf-neon-aqua:         var(--gf-accent-3);
+  --gf-holo-border:       linear-gradient(135deg, var(--gf-accent) 0%, var(--gf-accent-2) 45%, var(--gf-accent-3) 100%);
+  --gf-holo-border-dim:   linear-gradient(135deg,
+                            rgba(var(--gf-accent-rgb), 0.55) 0%,
+                            rgba(var(--gf-accent-2-rgb), 0.55) 50%,
+                            rgba(var(--gf-accent-rgb), 0.55) 100%);
+  --gf-neon-glow:         0 0 22px rgba(var(--gf-accent-2-rgb), 0.35),
+                          0 0 4px rgba(var(--gf-accent-rgb), 0.5);
+  --gf-neon-glow-sm:      0 0 14px rgba(var(--gf-accent-2-rgb), 0.28);
+
+  /* Legacy green palette — kept for anything that still references them */
   --gf-green-50:  #f0fff4;
   --gf-green-100: #dff8e3;
   --gf-green-200: #bfe7c5;
@@ -18,43 +301,34 @@
   --gf-green-800: #0c4a2a;
   --gf-green-900: #06361f;
   --gf-green-950: #021a10;
-
-  /* Surfaces (light) */
-  --gf-bg:        linear-gradient(180deg, #eafff0 0%, #cdecd4 100%);
-  --gf-surface:   #ffffff;
-  --gf-surface-2: #f6fbf7;
-  --gf-text:      #123716;
-  --gf-muted:     #3e6f4a;
-  --gf-border:    rgba(22, 59, 37, 0.12);
-  --gf-ring:      rgba(31, 191, 117, 0.45);
-  --gf-shadow-sm: 0 1px 2px rgba(12, 70, 36, 0.06);
-  --gf-shadow:    0 6px 20px rgba(12, 70, 36, 0.10);
-  --gf-shadow-lg: 0 18px 50px rgba(12, 70, 36, 0.15);
-
-  /* Radii + motion */
-  --gf-radius-sm: 8px;
-  --gf-radius:    14px;
-  --gf-radius-lg: 20px;
-  --gf-ease:      cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ── Dark-mode computed overrides ─────────────────────────── */
 .dark {
-  --gf-bg:        linear-gradient(180deg, #06130f 0%, #0f2a21 100%);
-  --gf-surface:   #0f241f;
-  --gf-surface-2: #0b1d18;
-  --gf-text:      #e7f7ee;
-  --gf-muted:     #a8d9bb;
-  --gf-border:    rgba(174, 240, 201, 0.10);
-  --gf-ring:      rgba(143, 232, 178, 0.45);
+  --gf-bg:        linear-gradient(180deg, var(--gf-bg-dark-from) 0%, var(--gf-bg-dark-to) 100%);
+  --gf-surface:   var(--gf-surface-dark);
+  --gf-surface-2: var(--gf-surface-dark-2);
+  --gf-text:      var(--gf-text-dark);
+  --gf-muted:     var(--gf-muted-dark);
+  --gf-border:    var(--gf-border-dark);
+  --gf-ring:      var(--gf-ring-dark);
+
+  --gf-glass-bg:        rgba(var(--gf-glass-dark-rgb), 0.55);
+  --gf-glass-bg-soft:   rgba(var(--gf-glass-dark-rgb), 0.32);
+
   --gf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --gf-shadow:    0 6px 20px rgba(0, 0, 0, 0.45);
   --gf-shadow-lg: 0 18px 50px rgba(0, 0, 0, 0.55);
+
+  --gf-neon-glow:         0 0 28px rgba(var(--gf-accent-2-rgb), 0.55),
+                          0 0 6px rgba(var(--gf-accent-rgb), 0.7);
+  --gf-neon-glow-sm:      0 0 16px rgba(var(--gf-accent-2-rgb), 0.4);
 }
 
-/* Base body (respects the mood/theme inline bg when set) */
-html, body {
-  min-height: 100%;
-}
+/* ----------------------------------------------------------
+   3.  BASE STYLES
+   ---------------------------------------------------------- */
+html, body { min-height: 100%; }
 body {
   background: var(--gf-bg);
   color: var(--gf-text);
@@ -62,39 +336,42 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
-.dark body {
-  background: var(--gf-bg);
-  color: var(--gf-text);
-}
 
-/* =========================================================
-   Reusable component classes
-   (drop these into className alongside existing inline styles)
-   ========================================================= */
+/* ----------------------------------------------------------
+   4.  REUSABLE COMPONENT CLASSES
+   ---------------------------------------------------------- */
 @layer components {
-  /* Cards */
+  /* ── Cards ──────────────────────────────────────────────── */
   .gf-card {
     background: var(--gf-surface);
     color: var(--gf-text);
     border: 1px solid var(--gf-border);
     border-radius: var(--gf-radius);
-    box-shadow: var(--gf-shadow);
+    box-shadow: var(--gf-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.05);
     transition: transform 200ms var(--gf-ease), box-shadow 200ms var(--gf-ease);
+  }
+  .dark .gf-card {
+    background: linear-gradient(180deg,
+                  rgba(var(--gf-glass-dark-rgb), 0.95),
+                  rgba(var(--gf-glass-dark-rgb), 0.88));
+    backdrop-filter: blur(8px) saturate(120%);
+    -webkit-backdrop-filter: blur(8px) saturate(120%);
   }
   .gf-card-hover:hover {
     transform: translateY(-3px);
-    box-shadow: var(--gf-shadow-lg);
+    box-shadow: var(--gf-shadow-lg), var(--gf-neon-glow-sm);
+    border-color: rgba(var(--gf-accent-rgb), 0.22);
   }
   .gf-card-glass {
-    background: rgba(10, 45, 30, 0.7);
+    background: rgba(var(--gf-glass-dark-rgb), 0.7);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: var(--gf-radius-lg);
-    color: #e7f7ee;
+    color: var(--gf-text-dark);
   }
 
-  /* Buttons */
+  /* ── Buttons ────────────────────────────────────────────── */
   .gf-btn {
     display: inline-flex;
     align-items: center;
@@ -117,41 +394,45 @@ body {
     outline: none;
     box-shadow: 0 0 0 3px var(--gf-ring);
   }
-  .gf-btn:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
-  .gf-btn:active:not(:disabled) {
-    transform: translateY(1px);
-  }
+  .gf-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+  .gf-btn:active:not(:disabled) { transform: translateY(1px); }
 
   .gf-btn-primary {
-    background: linear-gradient(145deg, var(--gf-green-500), var(--gf-green-600));
-    color: #052818;
-    box-shadow: 0 6px 18px rgba(16, 138, 84, 0.35);
+    background: linear-gradient(135deg,
+                  var(--gf-accent)      0%,
+                  var(--gf-accent-mid)  55%,
+                  var(--gf-accent-deep) 100%);
+    color: var(--gf-btn-primary-text);
+    box-shadow: 0 8px 26px rgba(var(--gf-accent-rgb), 0.4),
+                inset 0 0 0 1px rgba(var(--gf-accent-rgb), 0.45);
+    letter-spacing: 0.01em;
   }
   .gf-btn-primary:hover:not(:disabled) {
-    box-shadow: 0 10px 26px rgba(16, 138, 84, 0.45);
+    box-shadow: 0 12px 34px rgba(var(--gf-accent-rgb), 0.55),
+                0 0 28px rgba(var(--gf-accent-2-rgb), 0.35),
+                inset 0 0 0 1px rgba(var(--gf-accent-rgb), 0.6);
   }
 
   .gf-btn-ghost {
-    background: transparent;
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     color: var(--gf-text);
     border-color: var(--gf-border);
   }
+  .dark .gf-btn-ghost {
+    background: rgba(var(--gf-accent-rgb), 0.06);
+  }
   .gf-btn-ghost:hover:not(:disabled) {
-    background: var(--gf-surface-2);
+    background: rgba(var(--gf-accent-rgb), 0.12);
+    border-color: rgba(var(--gf-accent-rgb), 0.4);
+    box-shadow: var(--gf-neon-glow-sm);
   }
 
-  .gf-btn-danger {
-    background: #e14c4c;
-    color: #fff;
-  }
-  .gf-btn-danger:hover:not(:disabled) {
-    background: #c83838;
-  }
+  .gf-btn-danger { background: #e14c4c; color: #fff; }
+  .gf-btn-danger:hover:not(:disabled) { background: #c83838; }
 
-  /* Inputs */
+  /* ── Inputs ─────────────────────────────────────────────── */
   .gf-input,
   .gf-textarea,
   .gf-select {
@@ -168,12 +449,20 @@ body {
   .gf-input:focus,
   .gf-textarea:focus,
   .gf-select:focus {
-    border-color: var(--gf-green-500);
-    box-shadow: 0 0 0 3px var(--gf-ring);
+    border-color: var(--gf-accent);
+    box-shadow: 0 0 0 3px rgba(var(--gf-accent-rgb), 0.25),
+                0 0 18px rgba(var(--gf-accent-2-rgb), 0.2);
+  }
+  .dark .gf-input,
+  .dark .gf-textarea,
+  .dark .gf-select {
+    background: rgba(var(--gf-glass-dark-rgb), 0.7);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
   }
   .gf-textarea { min-height: 140px; resize: vertical; }
 
-  /* Chip / badge */
+  /* ── Chip / badge ───────────────────────────────────────── */
   .gf-chip {
     display: inline-flex;
     align-items: center;
@@ -182,22 +471,26 @@ body {
     border-radius: 999px;
     font-size: 0.8rem;
     font-weight: 600;
-    background: var(--gf-green-100);
-    color: var(--gf-green-700);
-    border: 1px solid var(--gf-green-200);
+    background: linear-gradient(135deg,
+                  rgba(var(--gf-accent-rgb), 0.18),
+                  rgba(var(--gf-accent-2-rgb), 0.14));
+    color: var(--gf-btn-primary-text);
+    border: 1px solid rgba(var(--gf-accent-rgb), 0.35);
   }
   .dark .gf-chip {
-    background: rgba(143, 232, 178, 0.12);
-    color: var(--gf-green-300);
-    border-color: rgba(143, 232, 178, 0.2);
+    color: var(--gf-accent-3);
+    background: linear-gradient(135deg,
+                  rgba(var(--gf-accent-rgb), 0.10),
+                  rgba(var(--gf-accent-2-rgb), 0.08));
+    border-color: rgba(var(--gf-accent-rgb), 0.25);
   }
 
-  /* Section heading */
+  /* ── Section headings ───────────────────────────────────── */
   .gf-h1 { font-size: clamp(1.6rem, 2vw + 1rem, 2.25rem); font-weight: 700; letter-spacing: -0.01em; }
   .gf-h2 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.005em; }
   .gf-muted { color: var(--gf-muted); }
 
-  /* Skeleton */
+  /* ── Skeleton ───────────────────────────────────────────── */
   .gf-skeleton {
     position: relative;
     overflow: hidden;
@@ -208,58 +501,141 @@ body {
     content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.35),
-      transparent
-    );
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
     transform: translateX(-100%);
     animation: gf-shimmer 1.3s infinite;
   }
   .dark .gf-skeleton::after {
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.06),
-      transparent
-    );
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
   }
 
-  /* Scrollbar polish */
-  .gf-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
-  .gf-scroll::-webkit-scrollbar-thumb {
-    background: var(--gf-border);
-    border-radius: 999px;
-  }
-  .gf-scroll::-webkit-scrollbar-thumb:hover {
-    background: var(--gf-green-400);
-  }
+  /* ── Scrollbar ──────────────────────────────────────────── */
+  .gf-scroll::-webkit-scrollbar        { width: 10px; height: 10px; }
+  .gf-scroll::-webkit-scrollbar-thumb  { background: var(--gf-border); border-radius: 999px; }
+  .gf-scroll::-webkit-scrollbar-thumb:hover { background: var(--gf-accent); }
 }
 
-/* =========================================================
-   Animations
-   ========================================================= */
-@keyframes gf-shimmer {
-  100% { transform: translateX(100%); }
-}
-@keyframes gf-fade-up {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
+/* ----------------------------------------------------------
+   5.  ANIMATIONS
+   ---------------------------------------------------------- */
+@keyframes gf-shimmer  { 100% { transform: translateX(100%); } }
+@keyframes gf-fade-up  { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes gf-holo-shift { 0% { background-position: 0% 50%; } 100% { background-position: 220% 50%; } }
+
 .gf-fade-up { animation: gf-fade-up 480ms var(--gf-ease) both; }
 
-/* =========================================================
-   Legacy dark-mode helpers (kept for older inline markup)
-   ========================================================= */
-.dark .card       { background-color: var(--gf-surface) !important; }
-.dark .sidebar    { background-color: #0b190b !important; }
-.dark .habit-item { background-color: var(--gf-surface) !important; }
+/* ----------------------------------------------------------
+   6.  LEGACY DARK-MODE HELPERS
+   ---------------------------------------------------------- */
+.dark .card        { background-color: var(--gf-surface) !important; }
+.dark .sidebar     { background-color: var(--gf-surface-dark-2) !important; }
+.dark .habit-item  { background-color: var(--gf-surface) !important; }
 
-/* =========================================================
-   shadcn/ui HSL tokens (kept — used by components/ui/*)
-   Tuned to GrowFlow greens so shadcn components match.
-   ========================================================= */
+/* ----------------------------------------------------------
+   7.  HOLO-GLASS UTILITIES
+   ---------------------------------------------------------- */
+@layer components {
+  /* Glass card with gradient border */
+  .gf-glass-card {
+    position: relative;
+    background: var(--gf-glass-bg);
+    backdrop-filter: blur(var(--gf-glass-blur, 18px)) saturate(140%);
+    -webkit-backdrop-filter: blur(var(--gf-glass-blur, 18px)) saturate(140%);
+    border-radius: var(--gf-radius);
+    border: 1px solid transparent;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    isolation: isolate;
+  }
+  .gf-glass-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: var(--gf-holo-border-dim);
+    -webkit-mask: linear-gradient(#000, #000) content-box,
+                  linear-gradient(#000, #000);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Standalone neon edge */
+  .gf-neon-edge { position: relative; }
+  .gf-neon-edge::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: var(--gf-holo-border-dim);
+    -webkit-mask: linear-gradient(#000, #000) content-box,
+                  linear-gradient(#000, #000);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Hover glow */
+  .gf-glow-hover {
+    transition: transform 180ms var(--gf-ease),
+                box-shadow 220ms var(--gf-ease),
+                border-color 180ms var(--gf-ease);
+  }
+  .gf-glow-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--gf-shadow-lg), var(--gf-neon-glow-sm);
+  }
+
+  /* Monospace numerics */
+  .gf-mono {
+    font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+
+  /* Holographic shimmer text */
+  .gf-holo-text {
+    background: linear-gradient(
+      110deg,
+      var(--gf-accent)   0%,
+      var(--gf-accent-3) 28%,
+      var(--gf-accent-2) 50%,
+      var(--gf-accent-3) 72%,
+      var(--gf-accent)   100%
+    );
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+            background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    animation: gf-holo-shift 9s linear infinite;
+  }
+
+  /* Scanline overlay */
+  .gf-scanlines { position: relative; }
+  .gf-scanlines::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0) 0px,
+      rgba(255,255,255,0) 2px,
+      rgba(255,255,255,0.025) 3px,
+      rgba(255,255,255,0) 4px
+    );
+    pointer-events: none;
+    border-radius: inherit;
+  }
+}
+
+/* ----------------------------------------------------------
+   8.  shadcn/ui HSL tokens — tuned per theme
+       The most important ones (primary, ring) update to match.
+   ---------------------------------------------------------- */
 @layer base {
   :root {
     --background: 120 40% 98%;
@@ -281,11 +657,6 @@ body {
     --border: 140 20% 88%;
     --input: 140 20% 88%;
     --ring: 151 72% 44%;
-    --chart-1: 151 72% 44%;
-    --chart-2: 173 58% 45%;
-    --chart-3: 38 92% 55%;
-    --chart-4: 340 75% 60%;
-    --chart-5: 262 60% 58%;
     --radius: 0.75rem;
   }
   .dark {
@@ -308,224 +679,9 @@ body {
     --border: 150 25% 18%;
     --input: 150 25% 18%;
     --ring: 146 65% 62%;
-    --chart-1: 146 65% 62%;
-    --chart-2: 173 58% 52%;
-    --chart-3: 38 92% 62%;
-    --chart-4: 340 75% 66%;
-    --chart-5: 262 60% 68%;
   }
 }
 
 @layer base {
   * { @apply border-border; }
-}
-
-/* =========================================================
-   Holo-glass design tokens & utilities
-   "Futuristic" layer: neon palette, gradient borders, soft
-   glows. Layered on top of the base tokens above so existing
-   classes (.gf-card, .gf-btn-primary, .gf-input, ...) inherit
-   the new look without changing any markup.
-   ========================================================= */
-:root {
-  --gf-neon-cyan:  #5cf2ff;
-  --gf-neon-mint:  #6effc4;
-  --gf-neon-aqua:  #9df2c8;
-  --gf-glass-bg:        rgba(255, 255, 255, 0.55);
-  --gf-glass-bg-soft:   rgba(255, 255, 255, 0.32);
-  --gf-glass-blur:      18px;
-  --gf-holo-border:     linear-gradient(135deg, #6effc4 0%, #5cf2ff 45%, #9df2c8 100%);
-  --gf-holo-border-dim: linear-gradient(135deg, rgba(110,255,196,0.55) 0%, rgba(92,242,255,0.55) 50%, rgba(157,242,200,0.55) 100%);
-  --gf-neon-glow:    0 0 22px rgba(92, 242, 255, 0.35), 0 0 4px rgba(110, 255, 196, 0.5);
-  --gf-neon-glow-sm: 0 0 14px rgba(92, 242, 255, 0.28);
-}
-.dark {
-  --gf-glass-bg:      rgba(10, 30, 22, 0.55);
-  --gf-glass-bg-soft: rgba(10, 30, 22, 0.32);
-  --gf-neon-glow:    0 0 28px rgba(92, 242, 255, 0.55), 0 0 6px rgba(110, 255, 196, 0.7);
-  --gf-neon-glow-sm: 0 0 16px rgba(92, 242, 255, 0.4);
-}
-
-@layer components {
-  /* ----- Glass card with gradient border ----- */
-  /* Use as a polished wrapper. Renders a 1px holographic edge via
-     mask-composite trick so the gradient sits cleanly on the border. */
-  .gf-glass-card {
-    position: relative;
-    background: var(--gf-glass-bg);
-    backdrop-filter: blur(var(--gf-glass-blur)) saturate(140%);
-    -webkit-backdrop-filter: blur(var(--gf-glass-blur)) saturate(140%);
-    border-radius: var(--gf-radius);
-    border: 1px solid transparent;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18),
-                inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    isolation: isolate;
-  }
-  .gf-glass-card::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: var(--gf-holo-border-dim);
-    -webkit-mask: linear-gradient(#000, #000) content-box,
-                  linear-gradient(#000, #000);
-    -webkit-mask-composite: xor;
-            mask-composite: exclude;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  /* Standalone neon edge -- drop on any rounded element to add a
-     subtle holographic outline without changing its background. */
-  .gf-neon-edge {
-    position: relative;
-  }
-  .gf-neon-edge::before {
-    content: "";
-    position: absolute;
-    inset: -1px;
-    border-radius: inherit;
-    padding: 1px;
-    background: var(--gf-holo-border-dim);
-    -webkit-mask: linear-gradient(#000, #000) content-box,
-                  linear-gradient(#000, #000);
-    -webkit-mask-composite: xor;
-            mask-composite: exclude;
-    pointer-events: none;
-  }
-
-  /* Hover-only neon glow (cheap drop-in for buttons, list rows). */
-  .gf-glow-hover {
-    transition: transform 180ms var(--gf-ease),
-                box-shadow 220ms var(--gf-ease),
-                border-color 180ms var(--gf-ease);
-  }
-  .gf-glow-hover:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--gf-shadow-lg), var(--gf-neon-glow-sm);
-  }
-
-  /* Tabular monospace for stats / numerics. */
-  .gf-mono {
-    font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.02em;
-  }
-
-  /* Holographic shimmer text -- use on hero headlines. */
-  .gf-holo-text {
-    background: linear-gradient(
-      110deg,
-      #6effc4 0%, #9df2c8 28%, #5cf2ff 50%, #9df2c8 72%, #6effc4 100%
-    );
-    background-size: 220% 100%;
-    -webkit-background-clip: text;
-            background-clip: text;
-    color: transparent;
-    -webkit-text-fill-color: transparent;
-    animation: gf-holo-shift 9s linear infinite;
-  }
-
-  /* Subtle scanline overlay -- opt-in via class. */
-  .gf-scanlines {
-    position: relative;
-  }
-  .gf-scanlines::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background-image: repeating-linear-gradient(
-      to bottom,
-      rgba(255, 255, 255, 0) 0px,
-      rgba(255, 255, 255, 0) 2px,
-      rgba(255, 255, 255, 0.025) 3px,
-      rgba(255, 255, 255, 0) 4px
-    );
-    pointer-events: none;
-    border-radius: inherit;
-  }
-
-  /* ----- Layered upgrades to existing classes ----- */
-  /* These come AFTER the original definitions so they cascade-win
-     within the same specificity. We keep all original properties
-     and just punch up the visual feedback. */
-  .gf-card {
-    box-shadow: var(--gf-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  }
-  .dark .gf-card {
-    background: linear-gradient(180deg,
-                  rgba(15, 36, 31, 0.92),
-                  rgba(11, 29, 24, 0.92));
-    backdrop-filter: blur(8px) saturate(120%);
-    -webkit-backdrop-filter: blur(8px) saturate(120%);
-  }
-  .gf-card-hover:hover {
-    box-shadow: var(--gf-shadow-lg), var(--gf-neon-glow-sm);
-    border-color: rgba(110, 255, 196, 0.22);
-  }
-
-  .gf-btn-primary {
-    background: linear-gradient(135deg, #6effc4 0%, #1fbf75 55%, #108a54 100%);
-    box-shadow: 0 8px 26px rgba(31, 191, 117, 0.4),
-                inset 0 0 0 1px rgba(110, 255, 196, 0.45);
-    letter-spacing: 0.01em;
-  }
-  .gf-btn-primary:hover:not(:disabled) {
-    box-shadow: 0 12px 34px rgba(31, 191, 117, 0.55),
-                0 0 28px rgba(92, 242, 255, 0.35),
-                inset 0 0 0 1px rgba(110, 255, 196, 0.6);
-  }
-
-  .gf-btn-ghost {
-    background: rgba(255, 255, 255, 0.04);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-  }
-  .dark .gf-btn-ghost {
-    background: rgba(143, 232, 178, 0.06);
-  }
-  .gf-btn-ghost:hover:not(:disabled) {
-    background: rgba(143, 232, 178, 0.12);
-    border-color: rgba(110, 255, 196, 0.4);
-    box-shadow: var(--gf-neon-glow-sm);
-  }
-
-  /* Inputs: neon focus ring */
-  .gf-input:focus,
-  .gf-textarea:focus,
-  .gf-select:focus {
-    border-color: var(--gf-green-400);
-    box-shadow: 0 0 0 3px rgba(110, 255, 196, 0.25),
-                0 0 18px rgba(92, 242, 255, 0.2);
-  }
-  .dark .gf-input,
-  .dark .gf-textarea,
-  .dark .gf-select {
-    background: rgba(11, 29, 24, 0.7);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-  }
-
-  /* Chip glow */
-  .gf-chip {
-    background: linear-gradient(135deg,
-                  rgba(110, 255, 196, 0.18),
-                  rgba(92, 242, 255, 0.14));
-    border-color: rgba(110, 255, 196, 0.35);
-    color: #052818;
-  }
-  .dark .gf-chip {
-    color: var(--gf-green-200);
-    background: linear-gradient(135deg,
-                  rgba(110, 255, 196, 0.10),
-                  rgba(92, 242, 255, 0.08));
-    border-color: rgba(110, 255, 196, 0.25);
-  }
-}
-
-/* Holo shimmer animation (used by .gf-holo-text). */
-@keyframes gf-holo-shift {
-  0%   { background-position: 0% 50%; }
-  100% { background-position: 220% 50%; }
 }
