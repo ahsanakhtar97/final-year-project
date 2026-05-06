@@ -30,7 +30,7 @@ export class Reminder {
   @Column({ name: 'is_read', default: false })
   isRead: boolean;
 
-  @Column({ name: 'reference_id', nullable: true })
+  @Column({ name: 'reference_id', type: 'int', nullable: true })
   referenceId: number | null;
 
   @CreateDateColumn({ name: 'created_at' })
