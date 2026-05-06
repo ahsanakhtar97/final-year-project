@@ -123,21 +123,10 @@ const STATS = [
 export default function Home() {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [sceneTheme, setSceneTheme] = useState<"green"|"purple"|"blue"|"pink"|"orange"|"yellow">("green");
-
-  // Apply saved colour theme so the landing page matches the dashboard.
+  // Keep landing page always on the original green theme.
   useEffect(() => {
-    const saved = localStorage.getItem("color_theme") as typeof sceneTheme | null;
-    if (saved) {
-      document.documentElement.setAttribute("data-color-theme", saved);
-      setSceneTheme(saved);
-    }
-    const savedMode = localStorage.getItem("global_theme");
-    if (savedMode === "dark") {
-      document.documentElement.classList.add("dark");
-    } else if (savedMode === "light") {
-      document.documentElement.classList.remove("dark");
-    }
+    document.documentElement.setAttribute("data-color-theme", "green");
+    document.documentElement.classList.remove("dark");
   }, []);
 
   const homeRef     = useRef<HTMLDivElement>(null);
@@ -279,7 +268,7 @@ export default function Home() {
         transition={{ duration: 0.8 }}
         className="relative z-10 flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 text-center pt-24"
       >
-        <HeroScene colorTheme={sceneTheme} />
+        <HeroScene colorTheme="green" />
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
