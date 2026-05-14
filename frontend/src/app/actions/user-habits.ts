@@ -1,57 +1,80 @@
-import api from "@/lib/axios";
 import { Habit, HabitStreak } from "@/types/habits";
 import { CreateUserHabitPayload, UserHabit } from "@/types/user-habits";
 
-// Client-callable helpers for the /user-habits endpoint family.
-
-export async function getHabitsByUserId(userId: number): Promise<Habit[]> {
-  const res = await api.get<Habit[]>(`/user-habits/user/${userId}`);
-  return res.data;
+function getAuthHeaders(): Record<string, string> {
+  const h: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (typeof window !== 'undefined') {
+    const t = localStorage.getItem('accessToken');
+    if (t) h['Authorization'] = `Bearer ${t}`;
+  }
+  return h;
 }
 
-export async function getUserHabit(
-  userId: number,
-  habitId: number,
-): Promise<UserHabit> {
-  const res = await api.get<UserHabit>(
-    `/user-habits/user/${userId}/habit/${habitId}`,
+export async function getHabitsByUserId(userId: number): Promise<Habit[]> {
+  const res = await fetch(`/api/user-habits/user/${userId}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function getUserHabit(userId: number, habitId: number): Promise<UserHabit> {
+  // Get all user habits and find the matching one
+  const habits = await getHabitsByUserId(userId);
+  const found = (habits as (Habit & { userHabitId?: number })[]).find(
+    (h) => h.habitId === habitId
   );
-  return res.data;
+  if (!found) throw new Error(`UserHabit not found for habitId ${habitId}`);
+  return {
+    userHabitId: found.userHabitId!,
+    userId,
+    habitId,
+    createdAt: found.createdAt,
+  } as UserHabit;
 }
 
 export async function getBestWorstHabit(userId: number, days: number = 30) {
-  const res = await api.get(
-    `/user-habits/user/${userId}/stats/best-worst?days=${days}`,
-  );
-  return res.data; // { best, worst }
+  const res = await fetch(`/api/user-habits/user/${userId}/stats/best-worst?days=${days}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
 }
 
 export async function getUserStreaks(userId: number): Promise<HabitStreak[]> {
-  const res = await api.get<HabitStreak[]>(
-    `/user-habits/user/${userId}/stats/streaks`,
-  );
-  return res.data;
+  const res = await fetch(`/api/user-habits/user/${userId}/stats/streaks`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
 }
 
 export async function fetchDailyCompleted(
   userId: number,
-  days: number,
+  days: number
 ): Promise<{ date: string; completed: number }[]> {
-  const res = await api.get<{ date: string; completed: number }[]>(
-    `/user-habits/user/${userId}/completed/${days}`,
-  );
-  return res.data;
+  const res = await fetch(`/api/user-habits/user/${userId}/completed/${days}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
 }
 
 export async function assignHabit(data: CreateUserHabitPayload) {
-  const res = await api.post("/user-habits", data);
-  return res.data;
+  const res = await fetch('/api/user-habits', {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
 }
 
-// NOTE: the singular `user-habit` path was a bug. The collection lives at /user-habits.
 export async function revokeHabit(data: CreateUserHabitPayload) {
-  const res = await api.delete(
-    `/user-habits/user/${data.userId}/habit/${data.habitId}`,
-  );
-  return res.data;
+  const res = await fetch(`/api/user-habits/user/${data.userId}/habit/${data.habitId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
 }

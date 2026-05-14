@@ -1,4 +1,11 @@
-import api from "@/lib/axios";
+function getAuthHeaders(): Record<string, string> {
+  const h: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (typeof window !== 'undefined') {
+    const t = localStorage.getItem('accessToken');
+    if (t) h['Authorization'] = `Bearer ${t}`;
+  }
+  return h;
+}
 
 export interface AnalyticsCorrelation {
   date: string;
@@ -7,6 +14,9 @@ export interface AnalyticsCorrelation {
 }
 
 export async function getUserAnalytics(userId: number): Promise<{ correlations: AnalyticsCorrelation[] }> {
-  const res = await api.get(`/analytics/user/${userId}`);
-  return res.data;
+  const res = await fetch(`/api/analytics/user/${userId}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) return { correlations: [] };
+  return res.json();
 }

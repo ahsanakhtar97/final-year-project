@@ -1,45 +1,45 @@
 /**
- * Admin API client — uses a separate axios instance that:
+ * Admin API client — plain fetch wrapper that:
  *  - Reads the JWT from localStorage (same 'accessToken' key)
  *  - Redirects to /admin/login on 401
  */
-import axios, { AxiosInstance } from "axios";
 
-const API_HOST =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
-  (process.env.NODE_ENV === "production" ? "" : "http://localhost:3000");
+// ─── Auth helper ─────────────────────────────────────────────────────────────
 
-const adminApi: AxiosInstance = axios.create({
-  baseURL: `${API_HOST}/api/v1`,
-});
+function getAuthHeaders() {
+  const h: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (typeof window !== 'undefined') {
+    const t = localStorage.getItem('accessToken');
+    if (t) h['Authorization'] = `Bearer ${t}`;
+  }
+  return h;
+}
 
-adminApi.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
-    const token = localStorage.getItem("accessToken");
-    if (token && config.headers) {
-      config.headers["Authorization"] = `Bearer ${token}`;
+async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(path, {
+    ...init,
+    headers: { ...getAuthHeaders(), ...(init?.headers ?? {}) },
+  });
+
+  if (res.status === 401 && typeof window !== 'undefined') {
+    localStorage.removeItem('accessToken');
+    if (!window.location.pathname.startsWith('/admin/login')) {
+      window.location.replace('/admin/login');
     }
   }
-  return config;
-});
 
-adminApi.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    if (typeof window !== "undefined" && err.response?.status === 401) {
-      localStorage.removeItem("accessToken");
-      if (!window.location.pathname.startsWith("/admin/login")) {
-        window.location.replace("/admin/login");
-      }
-    }
-    return Promise.reject(err);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as Record<string, unknown>;
+    throw new Error(String(err.error ?? err.message ?? `Request failed: ${res.status}`));
   }
-);
+
+  return res.json();
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export type AdminRole = "patient" | "psychiatrist" | "psychologist" | "admin";
-export type ApptStatus = "pending" | "confirmed" | "completed" | "cancelled" | "declined";
+export type AdminRole = 'patient' | 'psychiatrist' | 'psychologist' | 'admin';
+export type ApptStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'declined';
 
 export interface AdminUser {
   userId: number;
@@ -115,8 +115,7 @@ export interface PaginatedAppointments {
 // ─── API Functions ────────────────────────────────────────────────────────────
 
 export async function getAdminStats(): Promise<AdminStats> {
-  const res = await adminApi.get<AdminStats>("/admin/stats");
-  return res.data;
+  return adminFetch<AdminStats>('/api/admin/stats');
 }
 
 export async function getAdminUsers(params?: {
@@ -125,33 +124,42 @@ export async function getAdminUsers(params?: {
   page?: number;
   limit?: number;
 }): Promise<PaginatedUsers> {
-  const res = await adminApi.get<PaginatedUsers>("/admin/users", { params });
-  return res.data;
+  const qs = params ? '?' + new URLSearchParams(
+    Object.fromEntries(
+      Object.entries(params)
+        .filter(([, v]) => v !== undefined && v !== '')
+        .map(([k, v]) => [k, String(v)])
+    )
+  ).toString() : '';
+  return adminFetch<PaginatedUsers>(`/api/admin/users${qs}`);
 }
 
 export async function updateAdminUser(
   id: number,
   payload: { role?: string; verified?: boolean }
 ): Promise<AdminUser> {
-  const res = await adminApi.patch<AdminUser>(`/admin/users/${id}`, payload);
-  return res.data;
+  return adminFetch<AdminUser>(`/api/admin/users/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function deleteAdminUser(id: number): Promise<void> {
-  await adminApi.delete(`/admin/users/${id}`);
+  await adminFetch<unknown>(`/api/admin/users/${id}`, { method: 'DELETE' });
 }
 
 export async function getAdminProfessionals(): Promise<AdminUser[]> {
-  const res = await adminApi.get<AdminUser[]>("/admin/professionals");
-  return res.data;
+  return adminFetch<AdminUser[]>('/api/admin/professionals');
 }
 
 export async function verifyProfessional(
   id: number,
   verified: boolean
 ): Promise<{ userId: number; name: string; verified: boolean; message: string }> {
-  const res = await adminApi.patch(`/admin/professionals/${id}/verify`, { verified });
-  return res.data;
+  return adminFetch<{ userId: number; name: string; verified: boolean; message: string }>(
+    `/api/admin/professionals/${id}/verify`,
+    { method: 'PATCH', body: JSON.stringify({ verified }) }
+  );
 }
 
 export async function getAdminAppointments(params?: {
@@ -159,10 +167,16 @@ export async function getAdminAppointments(params?: {
   page?: number;
   limit?: number;
 }): Promise<PaginatedAppointments> {
-  const res = await adminApi.get<PaginatedAppointments>("/admin/appointments", { params });
-  return res.data;
+  const qs = params ? '?' + new URLSearchParams(
+    Object.fromEntries(
+      Object.entries(params)
+        .filter(([, v]) => v !== undefined && v !== '')
+        .map(([k, v]) => [k, String(v)])
+    )
+  ).toString() : '';
+  return adminFetch<PaginatedAppointments>(`/api/admin/appointments${qs}`);
 }
 
 export async function deleteAdminAppointment(id: number): Promise<void> {
-  await adminApi.delete(`/admin/appointments/${id}`);
+  await adminFetch<unknown>(`/api/admin/appointments/${id}`, { method: 'DELETE' });
 }

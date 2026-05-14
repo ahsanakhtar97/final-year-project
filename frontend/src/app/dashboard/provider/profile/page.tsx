@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import api from "@/lib/axios";
+
+function getAuthHeaders() {
+  const h: Record<string, string> = { "Content-Type": "application/json" };
+  if (typeof window !== "undefined") {
+    const t = localStorage.getItem("accessToken");
+    if (t) h["Authorization"] = `Bearer ${t}`;
+  }
+  return h;
+}
 
 interface MeResponse {
   userId: number;
@@ -31,17 +39,19 @@ export default function ProviderProfilePage() {
   useEffect(() => {
     (async () => {
       try {
-        const me = await api.get<MeResponse>("/auth/me");
-        setUserId(me.data.userId);
-        setName(me.data.name ?? "");
-        setEmail(me.data.email ?? "");
-        setBio(me.data.bio ?? "");
-        setCredentials(me.data.credentials ?? "");
-        setLanguages(me.data.languages ?? "");
-        setFeeText(me.data.feeText ?? "");
+        const res = await fetch("/api/auth/me", { headers: getAuthHeaders() });
+        if (!res.ok) throw new Error("Failed to load profile");
+        const me: MeResponse = await res.json();
+        setUserId(me.userId);
+        setName(me.name ?? "");
+        setEmail(me.email ?? "");
+        setBio(me.bio ?? "");
+        setCredentials(me.credentials ?? "");
+        setLanguages(me.languages ?? "");
+        setFeeText(me.feeText ?? "");
         setYearsExperience(
-          me.data.yearsExperience !== null && me.data.yearsExperience !== undefined
-            ? String(me.data.yearsExperience)
+          me.yearsExperience !== null && me.yearsExperience !== undefined
+            ? String(me.yearsExperience)
             : "",
         );
       } catch {
@@ -57,18 +67,25 @@ export default function ProviderProfilePage() {
     if (!userId) return;
     setSaving(true);
     try {
-      await api.patch(`/users/${userId}`, {
-        name,
-        bio: bio || undefined,
-        credentials: credentials || undefined,
-        languages: languages || undefined,
-        feeText: feeText || undefined,
-        yearsExperience: yearsExperience ? Number(yearsExperience) : undefined,
+      const res = await fetch(`/api/users/${userId}`, {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          name,
+          bio: bio || undefined,
+          credentials: credentials || undefined,
+          languages: languages || undefined,
+          feeText: feeText || undefined,
+          yearsExperience: yearsExperience ? Number(yearsExperience) : undefined,
+        }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as Record<string, unknown>;
+        throw new Error(String(err.message ?? err.error ?? "Couldn't save."));
+      }
       toast.success("Profile updated.");
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      toast.error(e?.response?.data?.message ?? "Couldn't save.");
+      toast.error(err instanceof Error ? err.message : "Couldn't save.");
     } finally {
       setSaving(false);
     }

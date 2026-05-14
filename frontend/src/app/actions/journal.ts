@@ -1,40 +1,57 @@
-import api from "@/lib/axios";
 import {
   CreateJournalEntryPayload,
   JournalEntry,
-} from "@/types/journal";
+} from '@/types/journal';
 
-// Client-callable wrappers around the /journal endpoint family. The
-// backend persists each entry along with the AI sentiment feedback, so
-// the UI can render a real history list instead of forgetting after refresh.
+function getAuthHeaders(): Record<string, string> {
+  const h: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (typeof window !== 'undefined') {
+    const t = localStorage.getItem('accessToken');
+    if (t) h['Authorization'] = `Bearer ${t}`;
+  }
+  return h;
+}
 
 export async function createJournalEntry(
   payload: CreateJournalEntryPayload,
 ): Promise<JournalEntry> {
-  const res = await api.post<JournalEntry>("/journal", payload);
-  return res.data;
+  const res = await fetch('/api/journal', {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`createJournalEntry failed: ${res.status}`);
+  return res.json();
 }
 
 export async function getJournalEntriesByUser(
   userId: number,
 ): Promise<JournalEntry[]> {
-  const res = await api.get<JournalEntry[]>(`/journal/user/${userId}`);
-  return res.data;
+  const res = await fetch(`/api/journal/user/${userId}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error(`getJournalEntriesByUser failed: ${res.status}`);
+  return res.json();
 }
 
 export async function deleteJournalEntry(
   entryId: number,
 ): Promise<{ message: string }> {
-  const res = await api.delete<{ message: string }>(`/journal/${entryId}`);
-  return res.data;
+  const res = await fetch(`/api/journal/${entryId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error(`deleteJournalEntry failed: ${res.status}`);
+  return res.json();
 }
 
 export async function getAverageMood(
   userId: number,
   limit = 7,
 ): Promise<{ average: number | null; count: number }> {
-  const res = await api.get<{ average: number | null; count: number }>(
-    `/journal/user/${userId}/mood?limit=${limit}`,
-  );
-  return res.data;
+  const res = await fetch(`/api/journal/user/${userId}/mood?limit=${limit}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error(`getAverageMood failed: ${res.status}`);
+  return res.json();
 }

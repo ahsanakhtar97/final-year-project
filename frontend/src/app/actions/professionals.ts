@@ -1,4 +1,3 @@
-import api from "@/lib/axios";
 import type { UserRole } from "./auth";
 
 export interface PublicProfessional {
@@ -15,13 +14,20 @@ export interface PublicProfessional {
 }
 
 export async function listProfessionals(role?: "psychiatrist" | "psychologist"): Promise<PublicProfessional[]> {
-  const res = await api.get<PublicProfessional[]>("/professionals", {
-    params: role ? { role } : undefined,
-  });
-  return res.data;
+  const url = role ? `/api/professionals?role=${encodeURIComponent(role)}` : '/api/professionals';
+  const res = await fetch(url, { method: 'GET' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to fetch professionals');
+  }
+  return res.json();
 }
 
 export async function getProfessional(id: number): Promise<PublicProfessional> {
-  const res = await api.get<PublicProfessional>(`/professionals/${id}`);
-  return res.data;
+  const res = await fetch(`/api/professionals/${id}`, { method: 'GET' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to fetch professional');
+  }
+  return res.json();
 }

@@ -36,7 +36,7 @@ import { getTasks } from "@/app/actions/tasks";
 import { getJournalEntriesByUser } from "@/app/actions/journal";
 import { getHabitsByUserId, getUserStreaks } from "@/app/actions/user-habits";
 import { getGoalsByUser } from "@/app/actions/goals";
-import api from "@/lib/axios";
+import { deleteUser } from "@/app/actions/getUsers";
 
 const SOUND_KEY = "gf_focus_sound_v1";
 const POMODORO_PREFS = "gf_pomodoro_prefs_v1";
@@ -129,28 +129,22 @@ export default function SettingsPage() {
       // strips the password hash and assembles profile + tasks + habits in
       // one shot. Falls back to a multi-call client aggregate if that
       // endpoint isn't available (older backend builds).
-      let payload: unknown;
-      try {
-        const res = await api.get(`/users/${userId}/export`);
-        payload = res.data;
-      } catch {
-        const [tasks, journal, habits, streaks, goals] = await Promise.all([
-          getTasks().catch(() => []),
-          getJournalEntriesByUser(userId).catch(() => []),
-          getHabitsByUserId(userId).catch(() => []),
-          getUserStreaks(userId).catch(() => []),
-          getGoalsByUser(userId).catch(() => []),
-        ]);
-        payload = {
-          exportedAt: new Date().toISOString(),
-          userId,
-          tasks,
-          journal,
-          habits,
-          streaks,
-          goals,
-        };
-      }
+      const [tasks, journal, habits, streaks, goals] = await Promise.all([
+        getTasks().catch(() => []),
+        getJournalEntriesByUser(userId).catch(() => []),
+        getHabitsByUserId(userId).catch(() => []),
+        getUserStreaks(userId).catch(() => []),
+        getGoalsByUser(userId).catch(() => []),
+      ]);
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        userId,
+        tasks,
+        journal,
+        habits,
+        streaks,
+        goals,
+      };
       const blob = new Blob([JSON.stringify(payload, null, 2)], {
         type: "application/json",
       });
@@ -177,7 +171,7 @@ export default function SettingsPage() {
     if (!confirm("Last chance. Are you absolutely sure?")) return;
     setBusy("delete");
     try {
-      await api.delete(`/users/${userId}`);
+      await deleteUser(userId);
       clearAuth();
       router.replace("/login");
     } catch (e) {

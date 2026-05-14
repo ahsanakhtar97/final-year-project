@@ -1,5 +1,3 @@
-import api from "@/lib/axios";
-
 export interface SleepLog {
   sleepLogId: number;
   userId: number;
@@ -18,17 +16,37 @@ export interface UpsertSleepPayload {
   note?: string;
 }
 
+function getAuthHeaders(): Record<string, string> {
+  const h: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (typeof window !== 'undefined') {
+    const t = localStorage.getItem('accessToken');
+    if (t) h['Authorization'] = `Bearer ${t}`;
+  }
+  return h;
+}
+
 export async function upsertSleep(p: UpsertSleepPayload): Promise<SleepLog> {
-  const res = await api.post<SleepLog>("/sleep", p);
-  return res.data;
+  const res = await fetch('/api/sleep', {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(p),
+  });
+  if (!res.ok) throw new Error(`upsertSleep failed: ${res.status}`);
+  const data: SleepLog = await res.json();
+  return { ...data, hours: Number(data.hours) };
 }
 
 export async function getRecentSleep(days = 30): Promise<SleepLog[]> {
-  const res = await api.get<SleepLog[]>("/sleep", { params: { days } });
-  // Backend returns hours as string from numeric column in some envs.
-  return res.data.map((r) => ({ ...r, hours: Number(r.hours) }));
+  const res = await fetch(`/api/sleep?days=${days}`, { headers: getAuthHeaders() });
+  if (!res.ok) throw new Error(`getRecentSleep failed: ${res.status}`);
+  const data: SleepLog[] = await res.json();
+  return data.map((r) => ({ ...r, hours: Number(r.hours) }));
 }
 
 export async function deleteSleep(id: number): Promise<void> {
-  await api.delete(`/sleep/${id}`);
+  const res = await fetch(`/api/sleep/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error(`deleteSleep failed: ${res.status}`);
 }

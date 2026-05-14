@@ -1,4 +1,11 @@
-import api from "@/lib/axios";
+function getAuthHeaders(): Record<string, string> {
+  const h: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (typeof window !== 'undefined') {
+    const t = localStorage.getItem('accessToken');
+    if (t) h['Authorization'] = `Bearer ${t}`;
+  }
+  return h;
+}
 
 export interface Report {
   reportId: number;
@@ -9,6 +16,9 @@ export interface Report {
 }
 
 export async function getUserReports(userId: number): Promise<Report[]> {
-  const res = await api.get<Report[]>(`/reports/user/${userId}`);
-  return res.data;
+  const res = await fetch(`/api/reports/user/${userId}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) return [];
+  return res.json();
 }

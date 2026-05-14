@@ -116,34 +116,11 @@ export default function SignupPage() {
         router.push("/login");
       }
     } catch (err: unknown) {
-      const ax = err as {
-        code?: string;
-        message?: string;
-        response?: { status?: number; data?: { message?: string | string[] } };
-      };
-      const status = ax?.response?.status;
-      const raw = ax?.response?.data?.message;
-      const message = Array.isArray(raw) ? raw.join(", ") : raw;
-
-      if (!ax?.response) {
-        const apiBase =
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-        toast.error(
-          `Couldn't reach the API at ${apiBase}. Is the backend running?`,
-        );
-        console.error("Signup network error:", ax?.code, ax?.message);
-      } else if (status === 409) {
-        toast.error("An account with that email already exists.");
-      } else if (status === 400 && message) {
-        toast.error(message);
-      } else if (status === 429) {
-        toast.error("Too many sign-up attempts. Try again in a minute.");
-      } else if (status && status >= 500) {
-        toast.error(
-          `Server error (${status}). Check the backend logs — most likely DB or JWT_SECRET misconfigured.`,
-        );
+      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      if (message.toLowerCase().includes('already') || message.includes('409')) {
+        toast.error('An account with that email already exists.');
       } else {
-        toast.error(message || `Something went wrong (${status ?? "?"}).`);
+        toast.error(message || 'Something went wrong. Please try again.');
       }
     } finally {
       setSubmitting(false);

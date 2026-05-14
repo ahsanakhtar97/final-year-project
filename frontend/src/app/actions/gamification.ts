@@ -1,4 +1,11 @@
-import api from "@/lib/axios";
+function getAuthHeaders(): Record<string, string> {
+  const h: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (typeof window !== 'undefined') {
+    const t = localStorage.getItem('accessToken');
+    if (t) h['Authorization'] = `Bearer ${t}`;
+  }
+  return h;
+}
 
 export interface Badge {
   badgeId: number;
@@ -17,6 +24,9 @@ export interface UserBadge {
 }
 
 export async function getUserBadges(userId: number): Promise<UserBadge[]> {
-  const res = await api.get<UserBadge[]>(`/gamification/user/${userId}/badges`);
-  return res.data;
+  const res = await fetch(`/api/gamification/user/${userId}/badges`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) return [];
+  return res.json();
 }

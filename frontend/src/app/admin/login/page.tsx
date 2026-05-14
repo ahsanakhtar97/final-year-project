@@ -2,13 +2,8 @@
 
 import { useState, FormEvent, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { ShieldCheck, Eye, EyeOff, Loader2 } from "lucide-react";
-
-const API_HOST =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
-  (process.env.NODE_ENV === "production" ? "" : "http://localhost:3000");
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -34,20 +29,29 @@ export default function AdminLogin() {
     setError("");
     setLoading(true);
     try {
-      const res = await axios.post(`${API_HOST}/api/v1/auth/login`, { email, password });
-      const { accessToken, role } = res.data as { accessToken: string; role: string };
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
 
-      if (role !== "admin") {
+      if (!res.ok) {
+        setError(data.message ?? "Invalid email or password.");
+        setLoading(false);
+        return;
+      }
+
+      if (data.role !== "admin") {
         setError("This account does not have admin privileges.");
         setLoading(false);
         return;
       }
 
-      localStorage.setItem("accessToken", accessToken);
+      localStorage.setItem("accessToken", data.accessToken);
       router.replace("/admin");
-    } catch (err: any) {
-      const msg = err?.response?.data?.message ?? "Invalid email or password.";
-      setError(Array.isArray(msg) ? msg[0] : msg);
+    } catch {
+      setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }

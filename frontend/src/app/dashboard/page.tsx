@@ -1,7 +1,6 @@
 "use client";
 
 import DailyCheckIn from "@/app/components/daily-check-in";
-import api from "@/lib/axios";
 import React, { useEffect, useMemo, useState } from "react";
 import CorrelationChart from "../components/charts/CorrelationChart";
 import Link from "next/link";
@@ -96,14 +95,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function fetchAiSuggestion() {
-      try {
-        const response = await api.get("/dashboard/summary");
-        const { recommendation, mood } = response.data;
-        setAiRecommendation(recommendation);
-        setCurrentMood(mood);
-      } catch {
-        setAiRecommendation("Stay focused and keep growing!");
-      }
+      setAiRecommendation("Stay focused and keep growing!");
     }
     fetchAiSuggestion();
   }, []);
