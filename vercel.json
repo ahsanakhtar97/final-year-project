@@ -2,22 +2,8 @@
   "version": 2,
   "builds": [
     {
-      "src": "backend/api/index.ts",
-      "use": "@vercel/node"
-    },
-    {
       "src": "frontend/package.json",
       "use": "@vercel/next"
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/backend/api/index.ts"
-    },
-    {
-      "source": "/docs(.*)",
-      "destination": "/backend/api/index.ts"
     }
   ]
 }
