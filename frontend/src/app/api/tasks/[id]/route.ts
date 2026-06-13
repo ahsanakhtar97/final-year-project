@@ -85,7 +85,7 @@ export async function PATCH(
 
     values.push(taskId, userId);
     const query = `UPDATE tasks SET ${updates.join(', ')} WHERE task_id = $${idx++} AND user_id = $${idx++} RETURNING *`;
-    const rows = await sql(query, values);
+    const rows = await (sql as any)(query, values);
     return NextResponse.json(rowToTask(rows[0] as Record<string, unknown>));
   } catch (err) {
     console.error('PATCH /api/tasks/[id] error:', err);
