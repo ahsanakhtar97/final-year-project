@@ -29,8 +29,8 @@ export async function getUserHabit(userId: number, habitId: number): Promise<Use
     userHabitId: found.userHabitId!,
     userId,
     habitId,
-    createdAt: found.createdAt,
-  } as UserHabit;
+    createdAt: (found as any).createdAt ?? new Date().toISOString(),
+  } as unknown as UserHabit;
 }
 
 export async function getBestWorstHabit(userId: number, days: number = 30) {

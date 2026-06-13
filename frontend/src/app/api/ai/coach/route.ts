@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserIdFromRequest } from '@/lib/db';
 import Groq from 'groq-sdk';
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || 'dummy-key' });
 
 const FALLBACK: { reply: string; suggestions: string[]; tone: 'encourage' | 'celebrate' | 'reset' } = {
   reply: 'Keep going — every small step counts on your wellness journey!',

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-
+// Lazy instantiate groq to avoid build-time errors when GROQ_API_KEY is not set
 interface DayData {
   date: string;
   habitsCompleted: number;
@@ -41,6 +40,7 @@ export async function POST(req: NextRequest) {
   ].join('\n');
 
   try {
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || 'dummy-key-to-avoid-throw' });
     const completion = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: [
