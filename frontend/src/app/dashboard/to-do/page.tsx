@@ -354,7 +354,7 @@ export default function ToDoBoard() {
     setShowAddModal(false);
     try {
       const created = await createTask(payload);
-      const realId = created.taskId ?? (created as any).id;
+      const realId = created.taskId ?? (created as { id?: number }).id;
       setColumns(prev => ({ ...prev, todo: prev.todo.map(t => t.taskId === tempId ? { ...created, taskId: realId } : t) }));
     } catch {
       setError("Failed to create task.");

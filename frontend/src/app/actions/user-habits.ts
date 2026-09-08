@@ -21,15 +21,15 @@ export async function getHabitsByUserId(userId: number): Promise<Habit[]> {
 export async function getUserHabit(userId: number, habitId: number): Promise<UserHabit> {
   // Get all user habits and find the matching one
   const habits = await getHabitsByUserId(userId);
-  const found = (habits as (Habit & { userHabitId?: number })[]).find(
-    (h) => h.habitId === habitId
-  );
+  const found = (
+    habits as (Habit & { userHabitId?: number; createdAt?: string })[]
+  ).find((h) => h.habitId === habitId);
   if (!found) throw new Error(`UserHabit not found for habitId ${habitId}`);
   return {
     userHabitId: found.userHabitId!,
     userId,
     habitId,
-    createdAt: (found as any).createdAt ?? new Date().toISOString(),
+    createdAt: found.createdAt ?? new Date().toISOString(),
   } as unknown as UserHabit;
 }
 

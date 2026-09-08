@@ -4,6 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcryptjs';
 
 import { UsersService } from '../users/users.service';
+import { UserRole } from '../users/enums/user-role.enum';
 import { AuthService } from './auth.service';
 
 describe('AuthService', () => {
@@ -65,6 +66,7 @@ describe('AuthService', () => {
         userId: 1,
         name: 'Ada',
         email: 'ada@example.com',
+        role: UserRole.PATIENT,
       });
     });
 
@@ -113,11 +115,13 @@ describe('AuthService', () => {
         userId: 7,
         name: 'Lin',
         email: 'lin@example.com',
+        role: UserRole.PATIENT,
       });
       expect(jwtService.signAsync).toHaveBeenCalledWith({
         sub: 7,
         name: 'Lin',
         email: 'lin@example.com',
+        role: UserRole.PATIENT,
       });
     });
   });
@@ -147,6 +151,7 @@ describe('AuthService', () => {
         name: dto.name,
         email: dto.email,
         password: dto.password,
+        role: dto.role,
       } as never));
 
       const result = await service.register({
@@ -165,6 +170,7 @@ describe('AuthService', () => {
         userId: 99,
         name: 'Grace',
         email: 'grace@example.com',
+        role: UserRole.PATIENT,
       });
     });
 
