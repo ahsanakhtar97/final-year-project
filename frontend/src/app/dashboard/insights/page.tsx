@@ -404,7 +404,7 @@ export default function InsightsPage() {
             <Brain size={28} className="mx-auto mb-3 opacity-40" />
             <p className="gf-muted text-sm">
               Complete a few habits and journal entries — your personalised AI
-              insights will appear here once there's enough data.
+              insights will appear here once there&apos;s enough data.
             </p>
           </div>
         ) : (

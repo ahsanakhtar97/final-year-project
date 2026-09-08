@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb, getUserIdFromRequest } from '@/lib/db';
+import { getDb, getUserIdFromRequest, type SqlQueryFn } from '@/lib/db';
 
 function rowToGoal(r: Record<string, unknown>) {
   return {
@@ -58,7 +58,7 @@ export async function PATCH(
 
     values.push(goalId, userId);
     const query = `UPDATE goals SET ${updates.join(', ')} WHERE goal_id = $${idx++} AND user_id = $${idx++} RETURNING *`;
-    const rows = await (sql as any)(query, values);
+    const rows = await (sql as unknown as SqlQueryFn)(query, values);
     return NextResponse.json(rowToGoal(rows[0] as Record<string, unknown>));
   } catch (err) {
     console.error('PATCH /api/goals/[id] error:', err);

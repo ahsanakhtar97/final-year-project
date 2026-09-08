@@ -4,8 +4,9 @@ import { ConfigService } from '@nestjs/config';
 import { GeminiService } from './gemini.service';
 
 /**
- * GeminiService is a thin wrapper around the SDK. We don't try to test
- * Google's responses -- we test our parsing and fallback contract:
+ * GeminiService is a thin wrapper around the Groq SDK (the class keeps its
+ * historical name). We don't try to test Groq's responses -- we test our
+ * parsing and fallback contract:
  *
  *   - When no API key is configured, isReady is false and every method
  *     short-circuits to null.
@@ -14,7 +15,7 @@ import { GeminiService } from './gemini.service';
  */
 
 describe('GeminiService', () => {
-  describe('without GEMINI_API_KEY', () => {
+  describe('without GROQ_API_KEY', () => {
     let svc: GeminiService;
 
     beforeEach(async () => {
@@ -52,19 +53,24 @@ describe('GeminiService', () => {
 
   describe('coach reply parsing (with mocked model)', () => {
     function svcWithModel(modelText: string) {
-      // Hand-build the service with a fake model to avoid touching the real
-      // GoogleGenerativeAI constructor.
+      // Hand-build the service with a fake Groq client so no real network
+      // call is made.
       const svc = new GeminiService({
         get: jest.fn((key: string) =>
-          key === 'GEMINI_API_KEY' ? 'fake-key' : 'gemini-1.5-flash',
+          key === 'GROQ_API_KEY' ? 'fake-key' : 'llama-3.3-70b-versatile',
         ),
       } as unknown as ConfigService);
-      // Force-replace the private model with a stub. Cast through unknown
-      // because the field is intentionally private.
-      (svc as unknown as { model: unknown }).model = {
-        generateContent: jest.fn().mockResolvedValue({
-          response: { text: () => modelText },
-        }),
+      // Force-replace the private client with a stub matching the shape the
+      // service actually calls: client.chat.completions.create(). Cast through
+      // unknown because the field is intentionally private and readonly.
+      (svc as unknown as { client: unknown }).client = {
+        chat: {
+          completions: {
+            create: jest.fn().mockResolvedValue({
+              choices: [{ message: { content: modelText } }],
+            }),
+          },
+        },
       };
       return svc;
     }

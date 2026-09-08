@@ -157,7 +157,7 @@ export default function RemindersPage() {
             <Bell size={18} style={{ color: "#fbbf24" }} />
             <div>
               <p className="font-semibold text-sm">Enable browser notifications</p>
-              <p className="gf-muted text-xs mt-0.5">Get alerted when a scheduled reminder fires, even if GrowFlow isn't in focus.</p>
+              <p className="gf-muted text-xs mt-0.5">Get alerted when a scheduled reminder fires, even if GrowFlow isn&apos;t in focus.</p>
             </div>
           </div>
           <button onClick={requestNotifPermission}
@@ -258,7 +258,7 @@ export default function RemindersPage() {
         <div className="gf-card p-10 text-center">
           <BellOff size={32} className="mx-auto mb-3 opacity-30" />
           <p className="font-semibold">No reminders yet</p>
-          <p className="gf-muted text-sm mt-1">Create one above or they'll appear automatically when tasks are due.</p>
+          <p className="gf-muted text-sm mt-1">Create one above or they&apos;ll appear automatically when tasks are due.</p>
         </div>
       ) : reminders.length > 0 ? (
         <div className="space-y-2">

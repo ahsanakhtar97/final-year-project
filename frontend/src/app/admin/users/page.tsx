@@ -74,7 +74,7 @@ export default function AdminUsersPage() {
   async function saveRole(userId: number) {
     setSaving(true);
     try {
-      await updateAdminUser(userId, { role: editRole as any });
+      await updateAdminUser(userId, { role: editRole });
       showToast("Role updated.");
       setEditingId(null);
       load();

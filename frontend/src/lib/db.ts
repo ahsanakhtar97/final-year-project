@@ -8,6 +8,17 @@ export function getDb() {
   return neon(url);
 }
 
+/**
+ * neon()'s `sql` is a tagged template, but it is also callable as a plain
+ * function for dynamically-built parameterized queries ($1, $2, ...).
+ * That call signature isn't in the published types, so cast through this
+ * instead of `any` at each call site.
+ */
+export type SqlQueryFn = (
+  query: string,
+  params: unknown[],
+) => Promise<Record<string, unknown>[]>;
+
 export function getUserIdFromRequest(req: NextRequest): number | null {
   try {
     const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
