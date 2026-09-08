@@ -85,7 +85,9 @@ export default function MoodPage() {
         setTags(todayEntry.emotionTags ?? []);
         setNote(todayEntry.note ?? "");
       }
-    } catch {
+    } catch (err) {
+      // Surface the real reason -- a bare toast hides why this failed.
+      console.error('Failed to load mood history:', err);
       toast.error("Couldn't load mood history.");
     } finally {
       setLoading(false);
