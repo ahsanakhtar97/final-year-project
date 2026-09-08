@@ -20,12 +20,16 @@ export async function GET(req: NextRequest) {
 
   try {
     const { searchParams } = new URL(req.url);
-    const days = parseInt(searchParams.get('days') ?? '30', 10);
+    const parsedDays = parseInt(searchParams.get('days') ?? '30', 10);
+    // Clamp: a missing/garbage ?days= must not reach the query as NaN.
+    const days = Number.isFinite(parsedDays)
+      ? Math.min(Math.max(parsedDays, 1), 365)
+      : 30;
     const sql = getDb();
     const rows = await sql`
       SELECT * FROM mood_logs
       WHERE user_id = ${userId}
-        AND date >= NOW() - INTERVAL '${days} days'
+        AND date >= CURRENT_DATE - ${days}::int
       ORDER BY date DESC
     `;
     return NextResponse.json(rows.map((r) => rowToMood(r as Record<string, unknown>)));

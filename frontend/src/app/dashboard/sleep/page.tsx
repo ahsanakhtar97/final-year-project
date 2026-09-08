@@ -49,7 +49,11 @@ export default function SleepPage() {
   async function load() {
     setLoading(true);
     try { setLogs(await getRecentSleep(30)); }
-    catch { toast.error("Couldn't load sleep history."); }
+    catch (err) {
+      // Surface the real reason -- a bare toast hides why this failed.
+      console.error('Failed to load sleep history:', err);
+      toast.error("Couldn't load sleep history.");
+    }
     finally { setLoading(false); }
   }
 
